@@ -254,7 +254,7 @@ export function ProfileClient({ user }: ProfileClientProps) {
 
       {/* Security Tab */}
       <TabsContent value="security" className="space-y-6">
-        <MFAEnrollment />
+        <MFAEnrollment user={user} />
       </TabsContent>
 
       {/* Sessions Tab */}

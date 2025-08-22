@@ -1,23 +1,78 @@
 import { getSession } from '@auth0/nextjs-auth0';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { User, Shield, Settings, Activity, Key } from 'lucide-react';
+import { User } from 'lucide-react';
 import { ProfileClient } from '@/components/ProfileClient';
+import { ProfileTabs } from '@/components/ProfileTabs';
+import { ManagementClient } from 'auth0';
 
-export default async function ProfilePage() {
+async function getFreshUserData(userId: string) {
+  try {
+    if (!process.env.AUTH0_M2M_CLIENT_ID || !process.env.AUTH0_M2M_CLIENT_SECRET) {
+      console.log('No M2M credentials - using session data only');
+      return null;
+    }
+
+    console.log('Fetching fresh user data for:', userId);
+    const management = new ManagementClient({
+      domain: process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', ''),
+      clientId: process.env.AUTH0_M2M_CLIENT_ID!,
+      clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
+    });
+
+    const freshUser = await management.users.get({ id: userId });
+    console.log('Fresh user data:', {
+      phone_number: freshUser.data.phone_number,
+      phone_verified: freshUser.data.phone_verified,
+      phone_number_verified: freshUser.data.phone_number_verified,
+      user_metadata: freshUser.data.user_metadata
+    });
+    return freshUser.data;
+  } catch (error) {
+    console.error('Error fetching fresh user data:', error);
+    return null;
+  }
+}
+
+interface ProfilePageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const session = await getSession();
   
   if (!session) {
     redirect('/api/auth/login');
   }
 
-  const user = session.user;
+  // Get the active tab from URL params, default to "overview"
+  const activeTab = typeof searchParams.tab === 'string' ? searchParams.tab : 'overview';
+
+  // Get fresh user data from Auth0 on page load
+  const freshUserData = await getFreshUserData(session.user.sub!);
+  
+  // Merge session user with fresh Auth0 data, prioritizing fresh data for verification fields
+  const user = freshUserData ? {
+    ...session.user,
+    phone_verified: freshUserData.phone_verified,
+    phone_number_verified: freshUserData.phone_number_verified,
+    phone_number: freshUserData.phone_number,
+    user_metadata: freshUserData.user_metadata,
+    email_verified: freshUserData.email_verified
+  } : session.user;
+
+  console.log('Final user data for profile:', {
+    phone_number: user.phone_number,
+    phone_verified: user.phone_verified,
+    phone_number_verified: user.phone_number_verified,
+    user_metadata_phone_verified: user.user_metadata?.phone_verified_via_mfa
+  });
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -70,13 +125,11 @@ export default async function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Phone Verified</span>
                   <Badge variant={
-                    (user.phone_number && user.phone_number_verified) || 
-                    user.user_metadata?.phone_verified_via_mfa 
+                    user.phone_number && user.phone_verified
                       ? "default" : "destructive"
                   }>
-                    {(user.phone_number && user.phone_number_verified) || 
-                     user.user_metadata?.phone_verified_via_mfa 
-                       ? "Yes" : "Unverified"}
+                    {user.phone_number && user.phone_verified
+                       ? "Yes" : "No"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
@@ -92,29 +145,7 @@ export default async function ProfilePage() {
 
         {/* Main Content Area */}
         <div className="lg:col-span-3">
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview" className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="tokens" className="flex items-center gap-2">
-                <Key className="w-4 h-4" />
-                Tokens
-              </TabsTrigger>
-              <TabsTrigger value="security" className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                Security
-              </TabsTrigger>
-              <TabsTrigger value="sessions" className="flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Sessions
-              </TabsTrigger>
-              <TabsTrigger value="preferences" className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Preferences
-              </TabsTrigger>
-            </TabsList>
+          <ProfileTabs defaultValue={activeTab}>
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
@@ -159,7 +190,7 @@ export default async function ProfilePage() {
 
             {/* Client-side components */}
             <ProfileClient user={user} />
-          </Tabs>
+          </ProfileTabs>
         </div>
       </div>
       
