@@ -1,9 +1,12 @@
-import { getSession } from '@auth0/nextjs-auth0';
-import Link from 'next/link';
+'use client';
 
-export default async function HomePage() {
-  const session = await getSession();
-  const user = session?.user;
+import { useUser } from '@auth0/nextjs-auth0/client';
+
+export default function HomePageClient() {
+  const { user, isLoading, error } = useUser();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
     <div style={{ padding: '20px' }}>
@@ -14,7 +17,7 @@ export default async function HomePage() {
         <div>
           <p>Welcome, {user.name}!</p>
           <div style={{ marginTop: '20px' }}>
-            <Link 
+            <a 
               href="/profile"
               style={{
                 padding: '10px 20px',
@@ -27,7 +30,7 @@ export default async function HomePage() {
               }}
             >
               View Profile
-            </Link>
+            </a>
             <a 
               href="/api/auth/logout"
               style={{
