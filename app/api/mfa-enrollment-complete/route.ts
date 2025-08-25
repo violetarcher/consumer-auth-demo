@@ -61,50 +61,75 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Check if user has MFA enrollments (indicating they completed step-up MFA)
-      console.log('User multifactor enrollments:', JSON.stringify(currentUser.data.multifactor, null, 2));
-      console.log('User profile data:', JSON.stringify({
-        phone_number: currentUser.data.phone_number,
-        phone_verified: currentUser.data.phone_verified,
-        user_metadata: currentUser.data.user_metadata
-      }, null, 2));
+      // Use Auth0 Guardian API to verify actual MFA enrollments
+      console.log('Checking Guardian MFA enrollments for user:', session.user.sub);
       
-      // More flexible MFA enrollment check
-      const hasMultifactor = currentUser.data.multifactor && currentUser.data.multifactor.length > 0;
-      const hasPhoneNumber = !!currentUser.data.phone_number;
-      const hasStepUpMetadata = existingMetadata.step_up_challenge_started;
+      // Get M2M token for Guardian API access
+      const guardianTokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.AUTH0_M2M_CLIENT_ID,
+          client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
+          audience: `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/`,
+          grant_type: 'client_credentials'
+        })
+      });
       
-      // For step-up flow, if phone is set in profile and we have step-up metadata, assume enrollment completed
-      if (hasStepUpMetadata && hasPhoneNumber) {
-        console.log('Step-up flow detected with phone number set - treating as enrolled');
-      } else if (!hasMultifactor) {
+      const guardianTokenData = await guardianTokenResponse.json();
+      const guardianAccessToken = guardianTokenData.access_token;
+      
+      // Query Guardian API for user's MFA enrollments
+      const domain = process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', '');
+      const enrollmentsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/enrollments`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${guardianAccessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!enrollmentsResponse.ok) {
+        const errorText = await enrollmentsResponse.text();
+        console.error('Failed to fetch Guardian enrollments:', enrollmentsResponse.status, errorText);
         return NextResponse.json({
           success: false,
-          error: 'No MFA enrollment detected.',
-          details: 'You must complete SMS MFA enrollment before your phone can be verified.',
+          error: 'Unable to verify MFA enrollment status.',
+          details: 'Could not access Guardian API to verify enrollments.'
+        }, { status: 500 });
+      }
+      
+      const enrollments = await enrollmentsResponse.json();
+      console.log('Guardian enrollments:', JSON.stringify(enrollments, null, 2));
+      
+      // Check for active SMS enrollments
+      const activeSMSEnrollments = enrollments.filter((enrollment: {
+        status: string;
+        type: string;
+        phone_number?: string;
+      }) => 
+        enrollment.status === 'confirmed' && 
+        (enrollment.type === 'sms' || enrollment.type === 'otp')
+      );
+      
+      if (activeSMSEnrollments.length === 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'No confirmed SMS MFA enrollment found.',
+          details: 'You must complete and confirm SMS MFA enrollment before your phone can be verified.',
           debug: {
-            hasMultifactor,
-            hasPhoneNumber,
-            hasStepUpMetadata,
-            multifactorData: currentUser.data.multifactor
+            totalEnrollments: enrollments.length,
+            enrollmentTypes: enrollments.map((e: { type: string; status: string }) => `${e.type}:${e.status}`),
+            userPhoneNumber: currentUser.data.phone_number
           }
         }, { status: 400 });
-      } else {
-        // Check if user has SMS MFA specifically (only if we have multifactor data)
-        const hasSMSMFA = currentUser.data.multifactor.some((mfa: any) => 
-          mfa.type === 'sms' || mfa.type === 'otp'
-        );
-
-        if (!hasSMSMFA) {
-          return NextResponse.json({
-            success: false,
-            error: 'SMS MFA enrollment not found.',
-            details: 'You must complete SMS MFA enrollment to verify your phone number.',
-            debug: {
-              multifactorTypes: currentUser.data.multifactor.map((mfa: any) => mfa.type)
-            }
-          }, { status: 400 });
-        }
+      }
+      
+      // Verify the phone number in the enrollment matches the one in the profile
+      const enrollmentPhone = activeSMSEnrollments[0].phone_number;
+      if (enrollmentPhone && enrollmentPhone !== userPhone) {
+        console.warn(`Phone number mismatch: Profile has ${userPhone}, enrollment has ${enrollmentPhone}`);
+        // Continue anyway - the enrollment is what matters for security
       }
 
       console.log('Security checks passed for SMS enrollment completion:', userPhone);
@@ -126,7 +151,6 @@ export async function POST(request: NextRequest) {
       const accessToken = tokenData.access_token;
       
       // Set phone number and mark as verified
-      const domain = process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', '');
       const response = await fetch(`https://${domain}/api/v2/users/${session.user.sub}`, {
         method: 'PATCH',
         headers: {
@@ -141,7 +165,7 @@ export async function POST(request: NextRequest) {
       
       if (response.ok) {
         // Update user_metadata to mark verification as complete
-        const metadataUpdate: Record<string, any> = {
+        const metadataUpdate: Record<string, unknown> = {
           ...existingMetadata,
           phone_verified_via_mfa: true,
           phone_verification_status: 'verified'
