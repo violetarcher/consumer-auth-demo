@@ -38,8 +38,6 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
   const [loading, setLoading] = useState(false);
   const [emailVerificationLoading, setEmailVerificationLoading] = useState(false);
   const [verifyPhoneLoading, setVerifyPhoneLoading] = useState(false);
-  const [showVerificationErrorDialog, setShowVerificationErrorDialog] = useState(false);
-  const [verificationErrorMessage, setVerificationErrorMessage] = useState('');
   const [factors, setFactors] = useState<MFAFactor[]>([
     {
       id: 'sms',
@@ -107,76 +105,55 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
 
     try {
       if (factorType === 'sms') {
-        // No need to collect phone number upfront - Auth0 will handle it
-        const response = await fetch('/api/mfa', {
+        // For SMS, we need to collect phone number for step-up challenge
+        if (!enrollmentData.phoneNumber) {
+          toast({
+            title: "Phone number required",
+            description: "Please enter your phone number to verify it via SMS.",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Use step-up challenge instead of direct enrollment
+        const response = await fetch('/api/step-up-challenge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
+            phoneNumber: enrollmentData.phoneNumber,
             type: 'sms'
-            // No phoneNumber needed - Auth0 enrollment page will collect it
           })
         });
 
         if (response.ok) {
           const result = await response.json();
-          console.log('MFA enrollment result:', result);
+          console.log('Step-up challenge result:', result);
           
-          // The ticket might be wrapped in a response object
-          const ticketData = result.ticket?.data || result.ticket;
-          console.log('Ticket data:', ticketData);
-          
-          if (ticketData?.ticket_url) {
-            // Replace custom domain with canonical Auth0 domain
-            const baseUrl = 'https://archfaktor.us.auth0.com';
-            // Clean up any extra quotes and replace domain
-            const cleanUrl = ticketData.ticket_url.replace(/"/g, '');
-            let correctedUrl = cleanUrl.replace(/https:\/\/[^\/]+/, baseUrl);
-            
-            // For SMS, try different hint parameters to force SMS enrollment
-            if (factorType === 'sms') {
-              const separator = correctedUrl.includes('?') ? '&' : '?';
-              // Try multiple hint approaches that might work
-              correctedUrl += `${separator}method=sms&authenticator=sms&enrollment_hint=sms`;
-            }
-            
-            console.log('Original ticket URL:', ticketData.ticket_url);
-            console.log('Cleaned URL:', cleanUrl);
-            console.log('Corrected ticket URL with hint:', correctedUrl);
-            
+          if (result.redirectRequired && result.challengeUrl) {
             toast({
-              title: "SMS Enrollment Started",
-              description: "Opening Auth0 enrollment page. Please select 'SMS' from the available options to complete your phone verification.",
+              title: "SMS Verification Started",
+              description: "You'll be redirected to complete SMS verification. This will verify your phone number.",
             });
-            // Open enrollment URL in new tab
-            window.open(correctedUrl, '_blank');
-          } else if (ticketData?.ticket_id) {
-            // Sometimes ticket comes with just ticket_id, construct URL
-            // Use the issuer base URL from environment
-            const baseUrl = process.env.NEXT_PUBLIC_AUTH0_ISSUER_BASE_URL || 'https://archfaktor.us.auth0.com';
-            const enrollmentUrl = `${baseUrl}/guardian/enrollment?ticket=${ticketData.ticket_id}`;
-            toast({
-              title: "Enrollment ticket created",
-              description: "Opening Auth0 MFA enrollment page. Complete the setup there.",
-            });
-            window.open(enrollmentUrl, '_blank');
+            
+            // Redirect to step-up challenge (forces MFA)
+            window.location.href = result.challengeUrl;
           } else {
             toast({
-              title: "Enrollment started", 
-              description: result.message || "MFA enrollment initiated successfully.",
+              title: "Challenge initiated",
+              description: result.message || "SMS verification challenge started.",
             });
-            console.log('No ticket_url or ticket_id found, full ticket data:', ticketData);
           }
           
-          // Close the modal and refresh enrollments
+          // Close the modal
           setEnrollingFactor(null);
           setVerificationStep('setup');
           setEnrollmentData({ phoneNumber: '', verificationCode: '', qrCode: '', secret: '' });
-          await fetchEnrollments();
         } else {
           const error = await response.json();
           toast({
-            title: "Enrollment failed",
-            description: error.details || error.error || "Failed to start SMS enrollment",
+            title: "Challenge failed",
+            description: error.details || error.error || "Failed to start SMS verification challenge",
             variant: "destructive"
           });
         }
@@ -289,79 +266,9 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
         window.location.reload();
       } else {
         const error = await response.json();
-        setVerificationErrorMessage(error.error || "You must complete SMS phone verification enrollment in Auth0 first. Please enroll in SMS MFA and complete the verification process before attempting to verify your phone number.");
-        setShowVerificationErrorDialog(true);
-      }
-    } catch (error) {
-      toast({
-        title: "Network error",
-        description: "Failed to connect to server. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setVerifyPhoneLoading(false);
-    }
-  };
-
-  const handleVerificationErrorAcknowledge = async () => {
-    setShowVerificationErrorDialog(false);
-    // Start SMS enrollment process directly - no phone number needed upfront
-    setLoading(true);
-    setEnrollingFactor('sms');
-    setVerificationStep('setup');
-    
-    try {
-      const response = await fetch('/api/mfa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'sms'
-          // No phone number needed - Auth0 will collect it
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('MFA enrollment result:', result);
-        
-        const ticketData = result.ticket?.data || result.ticket;
-        console.log('Ticket data:', ticketData);
-        
-        if (ticketData?.ticket_url) {
-          let correctedUrl = ticketData.ticket_url;
-          
-          // Use canonical domain
-          if (correctedUrl.includes('login.consumerauth.com')) {
-            correctedUrl = correctedUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
-          }
-          
-          // Add enrollment hints
-          if (correctedUrl.includes('archfaktor.us.auth0.com')) {
-            const separator = correctedUrl.includes('?') ? '&' : '?';
-            correctedUrl += `${separator}method=sms&authenticator=sms&enrollment_hint=sms`;
-          }
-          
-          // Mark enrollment as completed since user is actively going through the process
-          await fetch('/api/user-metadata', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              sms_enrollment_completed: true,
-              enrollment_completion_timestamp: new Date().toISOString()
-            })
-          });
-          
-          toast({
-            title: "SMS Enrollment Started",
-            description: "Opening Auth0 enrollment page. You'll enter your phone number there.",
-          });
-          window.open(correctedUrl, '_blank');
-        }
-      } else {
-        const error = await response.json();
         toast({
-          title: "Enrollment failed",
-          description: error.details || "Failed to start SMS enrollment",
+          title: "Verification failed",
+          description: error.error || "Please ensure you completed SMS MFA enrollment first.",
           variant: "destructive"
         });
       }
@@ -372,7 +279,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setVerifyPhoneLoading(false);
     }
   };
 
@@ -479,7 +386,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
             <Separator />
 
             {/* Phone Verification Completion Section */}
-            {user?.user_metadata?.pending_phone_number && user?.user_metadata?.phone_verification_status !== 'verified' && (
+            {user?.phone_number && !user?.phone_verified && (
               <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -487,7 +394,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                     <div>
                       <h4 className="font-medium text-orange-800">Complete Phone Verification</h4>
                       <p className="text-sm text-orange-600">
-                        You've enrolled in SMS MFA but your phone ({user.user_metadata.pending_phone_number}) isn't verified yet.
+                        Your phone ({user.phone_number}) is set but not verified. Complete MFA enrollment to verify.
                       </p>
                     </div>
                   </div>
@@ -551,8 +458,19 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                           <div className="space-y-4">
                             {factor.type === 'sms' && verificationStep === 'setup' && (
                               <div className="space-y-2">
-                                <p className="text-sm text-gray-600">
-                                  You'll enter your phone number on the Auth0 enrollment page.
+                                <Label htmlFor="sms-phone">Phone Number</Label>
+                                <Input
+                                  id="sms-phone"
+                                  type="tel"
+                                  placeholder="+1 (555) 123-4567"
+                                  value={enrollmentData.phoneNumber}
+                                  onChange={(e) => setEnrollmentData({
+                                    ...enrollmentData,
+                                    phoneNumber: e.target.value
+                                  })}
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                  Enter your phone number to verify it via SMS step-up authentication.
                                 </p>
                               </div>
                             )}
@@ -593,7 +511,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                                     className="font-mono text-sm"
                                   />
                                   <p className="text-xs text-muted-foreground">
-                                    Use this key if you can't scan the QR code
+                                    Use this key if you cannot scan the QR code
                                   </p>
                                 </div>
                               </div>
@@ -622,9 +540,9 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                             {verificationStep === 'setup' ? (
                               <Button 
                                 onClick={() => handleEnrollFactor(factor.type)}
-                                disabled={loading}
+                                disabled={loading || (factor.type === 'sms' && !enrollmentData.phoneNumber)}
                               >
-                                {loading ? 'Processing...' : (factor.type === 'sms' ? 'Start SMS Enrollment' : 'Continue')}
+                                {loading ? 'Processing...' : (factor.type === 'sms' ? 'Verify Phone via SMS' : 'Continue')}
                               </Button>
                             ) : (
                               <Button 
@@ -648,35 +566,6 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
         </CardContent>
       </Card>
 
-      {/* Verification Error Dialog */}
-      <Dialog open={showVerificationErrorDialog} onOpenChange={setShowVerificationErrorDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-orange-600">
-              <Smartphone className="w-5 h-5" />
-              SMS Enrollment Required
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              {verificationErrorMessage}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowVerificationErrorDialog(false)}
-              className="order-2 sm:order-1"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleVerificationErrorAcknowledge}
-              className="bg-orange-600 hover:bg-orange-700 order-1 sm:order-2"
-            >
-              Complete SMS Enrollment
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

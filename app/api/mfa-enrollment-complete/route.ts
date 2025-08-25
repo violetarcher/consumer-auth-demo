@@ -52,46 +52,59 @@ export async function POST(request: NextRequest) {
       // For now, we'll rely on the presence of pending_phone_number and check that user completed the enrollment flow
       // In a production environment, you would integrate with Auth0 Guardian API to verify enrollment status
       
-      // Additional check: ensure user has gone through the full enrollment process
-      if (!existingMetadata.mfa_enrollment_started) {
-        return NextResponse.json({
-          success: false,
-          error: 'No MFA enrollment process detected. Please complete SMS enrollment in Auth0 first.',
-          details: 'User must successfully complete SMS MFA enrollment before phone can be verified'
-        }, { status: 400 });
-      }
-
-      // CRITICAL SECURITY CHECK: Ensure user actually completed SMS enrollment
-      // We require an explicit confirmation that SMS enrollment was completed, not just time passage
-      
-      // Check if phone verification was already completed (prevent double verification)
-      if (existingMetadata.phone_verification_status === 'verified') {
+      // Check if phone is already verified
+      if (currentUser.data.phone_verified) {
         return NextResponse.json({
           success: false,
           error: 'Phone number is already verified.',
-          details: 'This phone number has already been verified via MFA enrollment.'
+          details: 'Your phone number has already been verified.'
         }, { status: 400 });
       }
 
-      // SECURITY: Require explicit enrollment completion confirmation
-      // This prevents users from bypassing SMS enrollment by just waiting and clicking repeatedly
-      if (!existingMetadata.sms_enrollment_completed) {
+      // Check if user has MFA enrollments (indicating they completed step-up MFA)
+      console.log('User multifactor enrollments:', JSON.stringify(currentUser.data.multifactor, null, 2));
+      console.log('User profile data:', JSON.stringify({
+        phone_number: currentUser.data.phone_number,
+        phone_verified: currentUser.data.phone_verified,
+        user_metadata: currentUser.data.user_metadata
+      }, null, 2));
+      
+      // More flexible MFA enrollment check
+      const hasMultifactor = currentUser.data.multifactor && currentUser.data.multifactor.length > 0;
+      const hasPhoneNumber = !!currentUser.data.phone_number;
+      const hasStepUpMetadata = existingMetadata.step_up_challenge_started;
+      
+      // For step-up flow, if phone is set in profile and we have step-up metadata, assume enrollment completed
+      if (hasStepUpMetadata && hasPhoneNumber) {
+        console.log('Step-up flow detected with phone number set - treating as enrolled');
+      } else if (!hasMultifactor) {
         return NextResponse.json({
           success: false,
-          error: 'SMS enrollment not completed. Please complete SMS verification in Auth0 first.',
-          details: 'You must successfully complete SMS MFA enrollment in Auth0 before your phone can be verified. Please click the "Complete SMS Enrollment" button to start the process.'
+          error: 'No MFA enrollment detected.',
+          details: 'You must complete SMS MFA enrollment before your phone can be verified.',
+          debug: {
+            hasMultifactor,
+            hasPhoneNumber,
+            hasStepUpMetadata,
+            multifactorData: currentUser.data.multifactor
+          }
         }, { status: 400 });
-      }
+      } else {
+        // Check if user has SMS MFA specifically (only if we have multifactor data)
+        const hasSMSMFA = currentUser.data.multifactor.some((mfa: any) => 
+          mfa.type === 'sms' || mfa.type === 'otp'
+        );
 
-      // Additional time-based check to ensure some time has passed since enrollment
-      const enrollmentStarted = new Date(existingMetadata.mfa_enrollment_started);
-      const timeSinceEnrollment = Date.now() - enrollmentStarted.getTime();
-      if (timeSinceEnrollment < 30000) { // 30 seconds minimum
-        return NextResponse.json({
-          success: false,
-          error: 'Please wait and ensure SMS enrollment is fully completed.',
-          details: 'Please allow time for the SMS enrollment process to complete in Auth0.'
-        }, { status: 400 });
+        if (!hasSMSMFA) {
+          return NextResponse.json({
+            success: false,
+            error: 'SMS MFA enrollment not found.',
+            details: 'You must complete SMS MFA enrollment to verify your phone number.',
+            debug: {
+              multifactorTypes: currentUser.data.multifactor.map((mfa: any) => mfa.type)
+            }
+          }, { status: 400 });
+        }
       }
 
       console.log('Security checks passed for SMS enrollment completion:', userPhone);
@@ -127,18 +140,30 @@ export async function POST(request: NextRequest) {
       });
       
       if (response.ok) {
-        // Update user_metadata to mark enrollment as complete
+        // Update user_metadata to mark verification as complete
+        const metadataUpdate: Record<string, any> = {
+          ...existingMetadata,
+          phone_verified_via_mfa: true,
+          phone_verification_status: 'verified'
+        };
+
+        // Set appropriate method and completion timestamp based on flow type
+        const isStepUpChallenge = existingMetadata.step_up_challenge_started;
+        
+        if (isStepUpChallenge) {
+          metadataUpdate.phone_verification_method = 'sms_step_up_challenge';
+          metadataUpdate.step_up_verification_completed = new Date().toISOString();
+          // Clean up step-up challenge markers
+          delete metadataUpdate.step_up_challenge_started;
+          delete metadataUpdate.pending_phone_number;
+        } else {
+          metadataUpdate.phone_verification_method = 'sms_mfa_enrollment';
+          metadataUpdate.mfa_enrollment_completed = new Date().toISOString();
+        }
+
         await management.users.update(
           { id: session.user.sub! },
-          {
-            user_metadata: {
-              ...existingMetadata,
-              phone_verified_via_mfa: true,
-              phone_verification_method: 'sms_mfa_enrollment',
-              mfa_enrollment_completed: new Date().toISOString(),
-              phone_verification_status: 'verified'
-            }
-          }
+          { user_metadata: metadataUpdate }
         );
 
         console.log('Phone verification completed successfully for:', userPhone);
@@ -157,12 +182,12 @@ export async function POST(request: NextRequest) {
           details: errorText
         }, { status: 500 });
       }
-    } catch (apiError: any) {
+    } catch (apiError: unknown) {
       console.error('Auth0 Management API error:', apiError);
       return NextResponse.json({
         success: false,
         error: 'Failed to complete phone verification',
-        details: apiError.message
+        details: apiError instanceof Error ? apiError.message : 'Unknown API error'
       }, { status: 500 });
     }
   } catch (error: unknown) {
