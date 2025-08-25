@@ -33,16 +33,33 @@ function TokensSection({ user }: { user: any }) {
 
   const decodeJWT = (token: string): DecodedToken | null => {
     try {
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
+      if (!token || typeof token !== 'string') {
+        console.warn('Invalid token: not a string or empty');
+        return null;
+      }
 
-      const header = JSON.parse(atob(parts[0]));
-      const payload = JSON.parse(atob(parts[1]));
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.warn('Invalid JWT format: expected 3 parts, got', parts.length);
+        return null;
+      }
+
+      // Add padding if needed for base64 decoding
+      const addPadding = (str: string) => {
+        const missing = str.length % 4;
+        if (missing) {
+          str += '='.repeat(4 - missing);
+        }
+        return str;
+      };
+
+      const header = JSON.parse(atob(addPadding(parts[0])));
+      const payload = JSON.parse(atob(addPadding(parts[1])));
       const signature = parts[2];
 
       return { header, payload, signature };
     } catch (error) {
-      console.error('Error decoding JWT:', error);
+      console.error('Error decoding JWT:', error, 'Token preview:', token?.substring(0, 50) + '...');
       return null;
     }
   };
@@ -216,9 +233,21 @@ function TokensSection({ user }: { user: any }) {
               </div>
             </TabsContent>
           </Tabs>
+        ) : rawToken ? (
+          <div className="text-muted-foreground text-center py-8">
+            <div className="font-medium mb-2">Unable to decode token</div>
+            <div className="text-sm">
+              This token may not be in valid JWT format or may be corrupted.
+            </div>
+            {showRawTokens && (
+              <div className="mt-4 p-3 bg-muted rounded font-mono text-xs break-all">
+                {rawToken}
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="text-destructive text-center py-8">
-            Invalid token format
+          <div className="text-muted-foreground text-center py-8">
+            No token available
           </div>
         )}
       </CardContent>

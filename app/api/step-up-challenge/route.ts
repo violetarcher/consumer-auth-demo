@@ -49,13 +49,11 @@ export async function POST(request: NextRequest) {
         }
       );
 
-      // Use the Auth0 SDK's login URL with step-up parameters
-      // This properly manages state cookies and callback handling
-      // Include login_hint to avoid username prompt for existing session
+      // For step-up MFA, only use acr_values and login_hint without prompt
+      // This will trigger MFA enrollment/challenge without forcing password re-entry
+      // Our Auth0 route handler detects step-up case and omits prompt parameter
       const challengeUrl = `/api/auth/login?` +
         `acr_values=${encodeURIComponent('http://schemas.openid.net/pape/policies/2007/06/multi-factor')}&` +
-        `prompt=mfa&` +
-        `max_age=0&` +
         `login_hint=${encodeURIComponent(session.user.email!)}&` +
         `returnTo=${encodeURIComponent('/profile?tab=security')}`;
 

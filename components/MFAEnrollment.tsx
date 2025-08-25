@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Smartphone, Key, QrCode, Check, X, Mail } from 'lucide-react';
+import { Shield, Smartphone, Key, QrCode, Check, X, Mail, AlertTriangle } from 'lucide-react';
 
 interface MFAEnrollment {
   id: string;
@@ -38,6 +38,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
   const [loading, setLoading] = useState(false);
   const [emailVerificationLoading, setEmailVerificationLoading] = useState(false);
   const [verifyPhoneLoading, setVerifyPhoneLoading] = useState(false);
+  const [resetMfaLoading, setResetMfaLoading] = useState(false);
   const [factors, setFactors] = useState<MFAFactor[]>([
     {
       id: 'sms',
@@ -247,6 +248,47 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
     }
   };
 
+  const handleResetMfa = async () => {
+    if (!window.confirm('Are you sure you want to reset your SMS MFA? This will remove your phone verification and all MFA enrollments. You will need to set them up again.')) {
+      return;
+    }
+
+    setResetMfaLoading(true);
+    
+    try {
+      const response = await fetch('/api/mfa-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "MFA Reset Successful",
+          description: result.message || "Your MFA has been reset. You can now set up MFA again.",
+        });
+        
+        // Refresh the page to update the UI
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "MFA Reset Failed",
+          description: error.details || error.error || "Failed to reset MFA",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Network error",
+        description: "Failed to connect to server. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setResetMfaLoading(false);
+    }
+  };
+
   const handleVerifyPhone = async () => {
     setVerifyPhoneLoading(true);
     
@@ -385,8 +427,87 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
 
             <Separator />
 
-            {/* Phone Verification Completion Section */}
-            {user?.phone_number && !user?.phone_verified && (
+            {/* Phone Number Section - Show if verified OR if unverified but has step-up metadata (pending completion) */}
+            {user?.phone_number && user.phone_number.trim() !== '' && (user?.phone_verified || user?.user_metadata?.step_up_challenge_started) ? (
+              <div className={`p-4 border rounded-lg ${
+                user.phone_verified 
+                  ? 'bg-muted/30' 
+                  : 'border-2 border-orange-200 bg-orange-50'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className={`w-5 h-5 ${
+                      user.phone_verified ? 'text-green-600' : 'text-orange-600'
+                    }`} />
+                    <div>
+                      <h4 className={`font-medium ${
+                        user.phone_verified ? '' : 'text-orange-800'
+                      }`}>
+                        Phone Number
+                      </h4>
+                      <p className={`text-sm ${
+                        user.phone_verified 
+                          ? 'text-muted-foreground' 
+                          : 'text-orange-600'
+                      }`}>
+                        {user.phone_verified 
+                          ? `Your phone number ${user.phone_number} is verified and secured with MFA`
+                          : `Your phone (${user.phone_number}) is set but not verified. Complete MFA enrollment to verify.`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  {user.phone_verified ? (
+                    <Badge variant="default" className="bg-green-600">
+                      <Check className="w-3 h-3 mr-1" />
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Button 
+                      onClick={handleVerifyPhone}
+                      disabled={verifyPhoneLoading}
+                      size="sm"
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      {verifyPhoneLoading ? 'Verifying...' : 'Complete Verification'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Reset MFA Section - Show if phone is verified */}
+            {user?.phone_verified && (
+              <>
+                <Separator />
+                <div className="p-4 border rounded-lg bg-destructive/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="w-5 h-5 text-destructive" />
+                      <div>
+                        <h4 className="font-medium text-destructive">Reset SMS MFA</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Remove your current phone verification and MFA enrollment. You&apos;ll need to set it up again.
+                        </p>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleResetMfa}
+                      disabled={resetMfaLoading}
+                    >
+                      {resetMfaLoading ? 'Resetting...' : 'Reset MFA'}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            {/* Legacy Phone Verification Completion Section - Remove this block if new section above works */}
+            {false && user?.phone_number && !user?.phone_verified && (
               <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -411,7 +532,15 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
             )}
 
             <div className="space-y-4">
-            {factors.map((factor) => (
+            {factors
+              .filter(factor => {
+                // Hide SMS factor if user's phone is already verified
+                if (factor.type === 'sms' && user?.phone_verified) {
+                  return false;
+                }
+                return true;
+              })
+              .map((factor) => (
               <div key={factor.id}>
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
