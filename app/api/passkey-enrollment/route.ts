@@ -12,18 +12,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { step } = body;
 
-    // Get user's access token for My Account API calls
-    // The My Account API requires the authenticated user's access token, not M2M credentials
-    const { accessToken } = await getAccessToken();
+    // For My Account API, we need to get a token with the specific /me/ audience
+    // Since the default audience is Management API, we need to request a new token
+    const myAccountAudience = `${process.env.AUTH0_ISSUER_BASE_URL}/me/`;
+    let accessToken: string;
+    
+    try {
+      // Get an access token specifically for the My Account API audience
+      const tokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.AUTH0_M2M_CLIENT_ID,
+          client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
+          audience: myAccountAudience,
+          grant_type: 'client_credentials',
+          scope: 'create:me:authentication_methods'
+        })
+      });
 
-    if (!accessToken) {
-      console.error('Failed to get user access token for My Account API');
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Failed to get My Account API token:', tokenResponse.status, errorText);
+        return NextResponse.json({ 
+          error: 'Failed to get My Account API access token',
+          details: errorText
+        }, { status: 500 });
+      }
+
+      const tokenData = await tokenResponse.json();
+      accessToken = tokenData.access_token;
+
+      console.log('Successfully got My Account API access token');
+    } catch (tokenError) {
+      console.error('Error getting My Account API token:', tokenError);
       return NextResponse.json({ 
-        error: 'Failed to authenticate user for My Account API' 
+        error: 'Failed to authenticate with My Account API' 
       }, { status: 500 });
     }
-
-    console.log('Using user access token for My Account API');
 
     if (step === 'initiate') {
       // Step 1: Initiate passkey enrollment using My Account API
