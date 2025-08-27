@@ -49,102 +49,49 @@ export async function POST(request: NextRequest) {
     }
 
     if (step === 'initiate') {
-      // Step 1: Check if user has existing MFA factors and if session has MFA claim
-      console.log('Checking MFA enrollment eligibility for user:', session.user.sub);
+      // Create Guardian enrollment ticket for WebAuthn
+      console.log('Creating WebAuthn enrollment ticket for user:', session.user.sub);
 
-      // Check if user's session includes MFA claim (indicating they've passed MFA recently)
-      const hasMFAClaim = session.user['http://schemas.openid.net/pape/policies/2007/06/multi-factor'];
-      
-      // Get user's existing enrollments
-      const enrollmentsResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${session.user.sub}/enrollments`, {
-        method: 'GET',
+      const ticketResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/guardian/enrollments/ticket`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          user_id: session.user.sub,
+          email: session.user.email,
+          send_mail: false
+        })
       });
 
-      if (!enrollmentsResponse.ok) {
-        const errorText = await enrollmentsResponse.text();
-        console.error('Failed to get user enrollments:', enrollmentsResponse.status, errorText);
+      if (!ticketResponse.ok) {
+        const errorText = await ticketResponse.text();
+        console.error('Guardian enrollment ticket creation failed:', ticketResponse.status, errorText);
         return NextResponse.json({
-          error: 'Failed to check existing MFA factors',
+          error: 'Failed to create WebAuthn enrollment ticket',
           details: errorText
-        }, { status: enrollmentsResponse.status });
+        }, { status: ticketResponse.status });
       }
 
-      const enrollments = await enrollmentsResponse.json();
-      console.log('User has existing MFA enrollments:', enrollments.length);
-
-      if (enrollments.length === 0) {
-        // User has no existing MFA factors, use regular enrollment ticket
-        const ticketResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/guardian/enrollments/ticket`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            user_id: session.user.sub,
-            email: session.user.email,
-            send_mail: false
-          })
-        });
-
-        if (!ticketResponse.ok) {
-          const errorText = await ticketResponse.text();
-          console.error('Guardian enrollment ticket creation failed:', ticketResponse.status, errorText);
-          return NextResponse.json({
-            error: 'Failed to create WebAuthn enrollment ticket',
-            details: errorText
-          }, { status: ticketResponse.status });
-        }
-
-        const ticketData = await ticketResponse.json();
-        let enrollmentUrl = ticketData.ticket_url;
-        if (enrollmentUrl && enrollmentUrl.includes('login.consumerauth.com')) {
-          enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: 'WebAuthn enrollment ticket created for new user',
-          enrollmentUrl: enrollmentUrl,
-          ticketId: ticketData.ticket_id
-        });
+      const ticketData = await ticketResponse.json();
+      let enrollmentUrl = ticketData.ticket_url;
+      
+      // Replace domain if using custom domain
+      if (enrollmentUrl && enrollmentUrl.includes('login.consumerauth.com')) {
+        enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
       }
 
-      // User has existing MFA factors - check if they have recent MFA claim
-      if (!hasMFAClaim) {
-        // User needs to complete step-up MFA first
-        return NextResponse.json({
-          success: false,
-          message: 'MFA verification required before enrolling additional factors',
-          requiresStepUp: true,
-          stepUpMessage: 'Please complete MFA verification first to enroll additional factors.'
-        }, { status: 403 });
-      }
-
-      // User has MFA claim - they can enroll additional factors
-      // For now, direct them to complete step-up which will give them the right session state
-      return NextResponse.json({
-        success: false,
-        message: 'Additional MFA enrollment not yet implemented via API',
-        requiresManualEnrollment: true,
-        manualMessage: 'Please contact support to enable additional WebAuthn factors.'
-      }, { status: 501 });
-
-    } else if (step === 'verify') {
-      // This step may not be needed for Guardian enrollment tickets
-      // Guardian handles the enrollment process end-to-end
       return NextResponse.json({
         success: true,
-        message: 'WebAuthn enrollment completed via Guardian'
+        message: 'WebAuthn enrollment ticket created',
+        enrollmentUrl: enrollmentUrl,
+        ticketId: ticketData.ticket_id
       });
 
     } else {
       return NextResponse.json({
-        error: 'Invalid step. Must be "initiate" or "verify"'
+        error: 'Invalid step. Must be "initiate"'
       }, { status: 400 });
     }
 
@@ -153,6 +100,104 @@ export async function POST(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: 'Failed to process WebAuthn enrollment', details: errorMessage }, 
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getSession();
+    
+    if (!session || !session.user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { enrollmentId } = body;
+
+    if (!enrollmentId) {
+      return NextResponse.json({ error: 'Enrollment ID is required' }, { status: 400 });
+    }
+
+    // Get Management API access token using M2M credentials
+    let accessToken: string;
+    
+    try {
+      const tokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.AUTH0_M2M_CLIENT_ID,
+          client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
+          audience: process.env.AUTH0_AUDIENCE,
+          grant_type: 'client_credentials',
+          scope: 'delete:users read:users'
+        })
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Failed to get Management API token:', tokenResponse.status, errorText);
+        return NextResponse.json({ 
+          error: 'Failed to get Management API access token',
+          details: errorText
+        }, { status: 500 });
+      }
+
+      const tokenData = await tokenResponse.json();
+      accessToken = tokenData.access_token;
+
+      console.log('Successfully got Management API access token for WebAuthn removal');
+    } catch (tokenError) {
+      console.error('Error getting Management API token:', tokenError);
+      return NextResponse.json({ 
+        error: 'Failed to authenticate with Management API' 
+      }, { status: 500 });
+    }
+
+    console.log('Removing WebAuthn enrollment:', enrollmentId, 'for user:', session.user.sub);
+
+    // Delete the enrollment
+    const deleteUrl = `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${session.user.sub}/enrollments/${enrollmentId}`;
+    console.log('DELETE request to:', deleteUrl);
+    
+    const deleteResponse = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('Delete response status:', deleteResponse.status);
+
+    if (!deleteResponse.ok) {
+      const errorText = await deleteResponse.text();
+      console.error('Failed to delete WebAuthn enrollment:', deleteResponse.status, errorText);
+      console.error('Request URL was:', deleteUrl);
+      console.error('Request headers included Authorization with token length:', accessToken.length);
+      
+      return NextResponse.json({
+        error: 'Failed to remove WebAuthn enrollment',
+        details: errorText,
+        status: deleteResponse.status,
+        url: deleteUrl.replace(accessToken, '[REDACTED]')
+      }, { status: deleteResponse.status });
+    }
+
+    console.log('Successfully removed WebAuthn enrollment:', enrollmentId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'WebAuthn enrollment removed successfully'
+    });
+
+  } catch (error: unknown) {
+    console.error('Error removing WebAuthn enrollment:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: 'Failed to remove WebAuthn enrollment', details: errorMessage }, 
       { status: 500 }
     );
   }

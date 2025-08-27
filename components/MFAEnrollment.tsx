@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Smartphone, Key, QrCode, Check, X, Mail, AlertTriangle } from 'lucide-react';
+import { Shield, Smartphone, Key, QrCode, Check, X, Mail, AlertTriangle, Fingerprint } from 'lucide-react';
 
 interface MFAEnrollment {
   id: string;
@@ -21,7 +21,7 @@ interface MFAEnrollment {
 
 interface MFAFactor {
   id: string;
-  type: 'sms' | 'totp' | 'push';
+  type: 'sms' | 'totp' | 'push' | 'webauthn';
   enabled: boolean;
   verified: boolean;
   name: string;
@@ -47,6 +47,14 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
       verified: false,
       name: 'SMS Phone Verification',
       description: 'Secure your account with SMS codes sent to your phone'
+    },
+    {
+      id: 'webauthn',
+      type: 'webauthn',
+      enabled: false,
+      verified: false,
+      name: 'WebAuthn Biometric',
+      description: 'Add biometric authentication as an additional MFA factor'
     },
     {
       id: 'totp',
@@ -155,6 +163,44 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
           toast({
             title: "Challenge failed",
             description: error.details || error.error || "Failed to start SMS verification challenge",
+            variant: "destructive"
+          });
+        }
+      } else if (factorType === 'webauthn') {
+        // Create WebAuthn enrollment ticket
+        const response = await fetch('/api/webauthn-enrollment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ step: 'initiate' })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data.enrollmentUrl) {
+            toast({
+              title: "WebAuthn Enrollment Started",
+              description: "Redirecting to complete WebAuthn enrollment...",
+            });
+            
+            // Redirect to Guardian enrollment
+            window.location.href = data.enrollmentUrl;
+          } else {
+            toast({
+              title: "Enrollment ticket created",
+              description: data.message || "WebAuthn enrollment ticket created successfully.",
+            });
+          }
+          
+          // Close the modal
+          setEnrollingFactor(null);
+          setVerificationStep('setup');
+          setEnrollmentData({ phoneNumber: '', verificationCode: '', qrCode: '', secret: '' });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "WebAuthn enrollment failed",
+            description: error.details || error.error || "Failed to create WebAuthn enrollment ticket",
             variant: "destructive"
           });
         }
@@ -374,6 +420,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
   const getFactorIcon = (type: string) => {
     switch (type) {
       case 'sms': return <Smartphone className="w-5 h-5" />;
+      case 'webauthn': return <Fingerprint className="w-5 h-5" />;
       case 'totp': return <Key className="w-5 h-5" />;
       case 'push': return <Shield className="w-5 h-5" />;
       default: return <Shield className="w-5 h-5" />;
@@ -538,6 +585,10 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                 if (factor.type === 'sms' && user?.phone_verified) {
                   return false;
                 }
+                // Show WebAuthn factor only if user's phone is verified (has SMS MFA)
+                if (factor.type === 'webauthn' && !user?.phone_verified) {
+                  return false;
+                }
                 return true;
               })
               .map((factor) => (
@@ -622,6 +673,24 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                               </div>
                             )}
                             
+                            {factor.type === 'webauthn' && verificationStep === 'setup' && (
+                              <div className="space-y-4">
+                                <div className="text-center">
+                                  <div className="inline-block p-6 bg-green-50 border border-green-200 rounded-lg">
+                                    <Fingerprint className="w-16 h-16 mx-auto text-green-600" />
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-3">
+                                    Click "Setup WebAuthn" to create an enrollment ticket
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <p className="text-sm text-blue-800">
+                                    <strong>Note:</strong> This will redirect you to Guardian to complete WebAuthn enrollment using your device's biometric authentication or security keys.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
                             {factor.type === 'totp' && verificationStep === 'setup' && (
                               <div className="space-y-4">
                                 <div className="text-center">
@@ -671,7 +740,11 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                                 onClick={() => handleEnrollFactor(factor.type)}
                                 disabled={loading || (factor.type === 'sms' && !enrollmentData.phoneNumber)}
                               >
-                                {loading ? 'Processing...' : (factor.type === 'sms' ? 'Verify Phone via SMS' : 'Continue')}
+                                {loading ? 'Processing...' : (
+                                  factor.type === 'sms' ? 'Verify Phone via SMS' :
+                                  factor.type === 'webauthn' ? 'Setup WebAuthn' :
+                                  'Continue'
+                                )}
                               </Button>
                             ) : (
                               <Button 

@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { MFAEnrollment } from '@/components/MFAEnrollment';
 import { PasskeyEnrollment } from '@/components/PasskeyEnrollment';
-import { WebAuthnEnrollment } from '@/components/WebAuthnEnrollment';
 import { UserSessions } from '@/components/UserSessions';
 import { UserMetadata } from '@/components/UserMetadata';
 import { Copy, Eye, EyeOff } from 'lucide-react';
@@ -286,7 +285,6 @@ export function ProfileClient({ user }: ProfileClientProps) {
       {/* Security Tab */}
       <TabsContent value="security" className="space-y-6">
         <PasskeyEnrollment user={user} />
-        <WebAuthnEnrollment user={user} />
         <MFAEnrollment user={user} />
       </TabsContent>
 
