@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           user_id: session.user.sub,
           email: session.user.email,
-          send_mail: false
+          send_mail: false,
+          allow_multiple_enrollments: true
         })
       });
 

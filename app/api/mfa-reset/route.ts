@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           console.log(`Attempting to delete MFA provider: ${provider}`);
           await management.users.deleteMultifactorProvider({ 
             id: session.user.sub!, 
-            provider: provider
+            provider: provider as any
           });
           console.log(`Successfully deleted MFA provider: ${provider}`);
         } catch (error) {

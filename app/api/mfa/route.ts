@@ -88,8 +88,9 @@ export async function POST(request: NextRequest) {
       if (type === 'sms') {
         // Create SMS enrollment ticket - Auth0 will collect phone number
         ticket = await management.guardian.createEnrollmentTicket({
-          user_id: session.user.sub!
-        });
+          user_id: session.user.sub!,
+          factor: 'sms'
+        } as any);
         console.log('SMS enrollment ticket created:', ticket);
         
         // Store enrollment started timestamp for security tracking
@@ -113,11 +114,19 @@ export async function POST(request: NextRequest) {
           console.error('Failed to update enrollment timestamp:', updateError);
         }
       } else if (type === 'totp') {
-        // Create TOTP enrollment ticket
+        // Create TOTP enrollment ticket with push-notification factor
         ticket = await management.guardian.createEnrollmentTicket({
-          user_id: session.user.sub!
-        });
+          user_id: session.user.sub!,
+          factor: 'push-notification'
+        } as any);
         console.log('TOTP enrollment ticket created:', ticket);
+      } else if (type === 'totp-otp') {
+        // Create TOTP enrollment ticket with otp factor
+        ticket = await management.guardian.createEnrollmentTicket({
+          user_id: session.user.sub!,
+          factor: 'otp'
+        } as any);
+        console.log('TOTP-OTP enrollment ticket created:', ticket);
       }
 
       return NextResponse.json({

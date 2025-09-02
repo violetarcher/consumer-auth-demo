@@ -21,7 +21,7 @@ interface MFAEnrollment {
 
 interface MFAFactor {
   id: string;
-  type: 'sms' | 'totp' | 'push' | 'webauthn';
+  type: 'sms' | 'totp' | 'totp-otp' | 'push' | 'webauthn' | 'reset-mfa';
   enabled: boolean;
   verified: boolean;
   name: string;
@@ -49,20 +49,36 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
       description: 'Secure your account with SMS codes sent to your phone'
     },
     {
-      id: 'webauthn',
-      type: 'webauthn',
-      enabled: false,
-      verified: false,
-      name: 'WebAuthn Biometric',
-      description: 'Add biometric authentication as an additional MFA factor'
-    },
-    {
       id: 'totp',
       type: 'totp',
       enabled: false,
       verified: false,
-      name: 'Authenticator App',
-      description: 'Use apps like Google Authenticator or Authy'
+      name: 'Authenticator App - Auth0 Guardian w/ Push',
+      description: 'Use the Guardian app for push notifications and TOTP codes'
+    },
+    {
+      id: 'totp-otp',
+      type: 'totp-otp',
+      enabled: false,
+      verified: false,
+      name: 'TOTP Authenticator',
+      description: 'Use apps like Google Authenticator or Authy for time-based codes'
+    },
+    {
+      id: 'additional-mfa',
+      type: 'webauthn',
+      enabled: false,
+      verified: false,
+      name: 'Enroll an MFA Factor',
+      description: 'Add additional multi-factor authentication options to your account'
+    },
+    {
+      id: 'reset-mfa',
+      type: 'reset-mfa',
+      enabled: false,
+      verified: false,
+      name: 'Reset MFA',
+      description: 'Remove all MFA enrollments and start over'
     }
   ]);
 
@@ -88,12 +104,24 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
         setEnrollments(data.enrollments || []);
         
         // Update factors based on actual enrollments
+        const hasAnyEnrollments = data.enrollments && data.enrollments.length > 0;
+        
         setFactors(prevFactors => 
           prevFactors.map(factor => {
             const enrollment = data.enrollments?.find((e: MFAEnrollment) => 
               (e.type === 'sms' && factor.type === 'sms') ||
               (e.type === 'otp' && factor.type === 'totp')
             );
+            
+            // Show Reset MFA option only when user has enrollments
+            if (factor.type === 'reset-mfa') {
+              return {
+                ...factor,
+                enabled: hasAnyEnrollments,
+                verified: false
+              };
+            }
+            
             return {
               ...factor,
               enabled: !!enrollment && enrollment.status === 'confirmed',
@@ -179,8 +207,8 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
           
           if (data.enrollmentUrl) {
             toast({
-              title: "WebAuthn Enrollment Started",
-              description: "Redirecting to complete WebAuthn enrollment...",
+              title: "MFA Enrollment Started",
+              description: "Redirecting to Guardian to enroll additional MFA factors...",
             });
             
             // Redirect to Guardian enrollment
@@ -188,7 +216,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
           } else {
             toast({
               title: "Enrollment ticket created",
-              description: data.message || "WebAuthn enrollment ticket created successfully.",
+              description: data.message || "MFA enrollment ticket created successfully.",
             });
           }
           
@@ -199,8 +227,8 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
         } else {
           const error = await response.json();
           toast({
-            title: "WebAuthn enrollment failed",
-            description: error.details || error.error || "Failed to create WebAuthn enrollment ticket",
+            title: "MFA enrollment failed",
+            description: error.details || error.error || "Failed to create MFA enrollment ticket",
             variant: "destructive"
           });
         }
@@ -213,25 +241,127 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
 
         if (response.ok) {
           const data = await response.json();
-          let enrollmentUrl = data.ticket?.ticket_url || '';
+          console.log('TOTP enrollment response data:', data);
           
-          // Add enrollment hint for TOTP to direct user to authenticator app enrollment
-          if (enrollmentUrl && !enrollmentUrl.includes('enrollment_hint')) {
-            const separator = enrollmentUrl.includes('?') ? '&' : '?';
-            enrollmentUrl += `${separator}enrollment_hint=totp`;
+          // The ticket URL could be at different paths depending on API response
+          let enrollmentUrl = data.ticket?.data?.ticket_url || data.ticket?.ticket_url || data.ticket_url || '';
+          
+          console.log('Extracted enrollment URL:', enrollmentUrl);
+          
+          if (enrollmentUrl) {
+            // Domain replacement if needed
+            if (enrollmentUrl.includes('login.consumerauth.com')) {
+              enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
+            }
+            
+            console.log('Final enrollment URL after domain replacement:', enrollmentUrl);
+            
+            toast({
+              title: "TOTP Enrollment Started",
+              description: "Redirecting to Guardian to set up your authenticator app...",
+            });
+            
+            // Redirect to Guardian enrollment page
+            window.location.href = enrollmentUrl;
+          } else {
+            console.warn('No enrollment URL found in response:', data);
+            toast({
+              title: "Enrollment ticket created",
+              description: data.message || "TOTP enrollment ticket created successfully.",
+            });
           }
           
-          setEnrollmentData({
-            ...enrollmentData,
-            qrCode: enrollmentUrl,
-            secret: 'Use QR code or follow enrollment URL'
-          });
-          setVerificationStep('verify');
+          // Close the modal
+          setEnrollingFactor(null);
+          setVerificationStep('setup');
+          setEnrollmentData({ phoneNumber: '', verificationCode: '', qrCode: '', secret: '' });
         } else {
           const error = await response.json();
           toast({
-            title: "Enrollment failed",
-            description: error.details || "Failed to start TOTP enrollment",
+            title: "TOTP enrollment failed",
+            description: error.details || "Failed to create TOTP enrollment ticket",
+            variant: "destructive"
+          });
+        }
+      } else if (factorType === 'totp-otp') {
+        const response = await fetch('/api/mfa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'totp-otp' })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('TOTP-OTP enrollment response data:', data);
+          
+          // The ticket URL could be at different paths depending on API response
+          let enrollmentUrl = data.ticket?.data?.ticket_url || data.ticket?.ticket_url || data.ticket_url || '';
+          
+          console.log('Extracted enrollment URL:', enrollmentUrl);
+          
+          if (enrollmentUrl) {
+            // Domain replacement if needed
+            if (enrollmentUrl.includes('login.consumerauth.com')) {
+              enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
+            }
+            
+            console.log('Final enrollment URL after domain replacement:', enrollmentUrl);
+            
+            toast({
+              title: "TOTP Enrollment Started",
+              description: "Redirecting to Guardian to set up your authenticator app...",
+            });
+            
+            // Redirect to Guardian enrollment page
+            window.location.href = enrollmentUrl;
+          } else {
+            console.warn('No enrollment URL found in response:', data);
+            toast({
+              title: "Enrollment ticket created",
+              description: data.message || "TOTP enrollment ticket created successfully.",
+            });
+          }
+          
+          // Close the modal
+          setEnrollingFactor(null);
+          setVerificationStep('setup');
+          setEnrollmentData({ phoneNumber: '', verificationCode: '', qrCode: '', secret: '' });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "TOTP enrollment failed",
+            description: error.details || error.error || "Failed to create TOTP enrollment ticket",
+            variant: "destructive"
+          });
+        }
+      } else if (factorType === 'reset-mfa') {
+        const response = await fetch('/api/mfa-reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('MFA reset response:', data);
+          
+          toast({
+            title: "MFA Reset Successful",
+            description: "All MFA enrollments have been removed. You can now set up new factors.",
+          });
+          
+          // Refresh enrollments to reflect the reset
+          fetchEnrollments();
+          
+          // Close the modal
+          setEnrollingFactor(null);
+          setVerificationStep('setup');
+          setEnrollmentData({ phoneNumber: '', verificationCode: '', qrCode: '', secret: '' });
+        } else {
+          const error = await response.json();
+          toast({
+            title: "MFA reset failed",
+            description: error.details || error.error || "Failed to reset MFA enrollments",
             variant: "destructive"
           });
         }
@@ -420,9 +550,11 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
   const getFactorIcon = (type: string) => {
     switch (type) {
       case 'sms': return <Smartphone className="w-5 h-5" />;
-      case 'webauthn': return <Fingerprint className="w-5 h-5" />;
+      case 'webauthn': return <Shield className="w-5 h-5" />;
       case 'totp': return <Key className="w-5 h-5" />;
+      case 'totp-otp': return <QrCode className="w-5 h-5" />;
       case 'push': return <Shield className="w-5 h-5" />;
+      case 'reset-mfa': return <AlertTriangle className="w-5 h-5 text-red-600" />;
       default: return <Shield className="w-5 h-5" />;
     }
   };
@@ -585,10 +717,11 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                 if (factor.type === 'sms' && user?.phone_verified) {
                   return false;
                 }
-                // Show WebAuthn factor only if user's phone is verified (has SMS MFA)
-                if (factor.type === 'webauthn' && !user?.phone_verified) {
-                  return false;
+                // Only show Reset MFA option when user has enrollments
+                if (factor.type === 'reset-mfa') {
+                  return factor.enabled;
                 }
+                // Always show other factors
                 return true;
               })
               .map((factor) => (
@@ -676,16 +809,16 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                             {factor.type === 'webauthn' && verificationStep === 'setup' && (
                               <div className="space-y-4">
                                 <div className="text-center">
-                                  <div className="inline-block p-6 bg-green-50 border border-green-200 rounded-lg">
-                                    <Fingerprint className="w-16 h-16 mx-auto text-green-600" />
+                                  <div className="inline-block p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <Shield className="w-16 h-16 mx-auto text-blue-600" />
                                   </div>
                                   <p className="text-sm text-muted-foreground mt-3">
-                                    Click "Setup WebAuthn" to create an enrollment ticket
+                                    Click "Enroll MFA Factor" to access additional authentication options
                                   </p>
                                 </div>
                                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                   <p className="text-sm text-blue-800">
-                                    <strong>Note:</strong> This will redirect you to Guardian to complete WebAuthn enrollment using your device's biometric authentication or security keys.
+                                    <strong>Note:</strong> This will redirect you to Guardian where you can choose from available MFA factors like biometrics, security keys, or authenticator apps.
                                   </p>
                                 </div>
                               </div>
@@ -694,42 +827,54 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                             {factor.type === 'totp' && verificationStep === 'setup' && (
                               <div className="space-y-4">
                                 <div className="text-center">
-                                  <div className="inline-block p-4 bg-white border rounded-lg">
-                                    <QrCode className="w-32 h-32 mx-auto text-muted-foreground" />
+                                  <div className="inline-block p-6 bg-green-50 border border-green-200 rounded-lg">
+                                    <Key className="w-16 h-16 mx-auto text-green-600" />
                                   </div>
-                                  <p className="text-sm text-muted-foreground mt-2">
-                                    Scan this QR code with your authenticator app
+                                  <p className="text-sm text-muted-foreground mt-3">
+                                    Click "Setup Authenticator App" to access the enrollment screen
                                   </p>
                                 </div>
-                                <div className="space-y-2">
-                                  <Label>Manual Setup Key</Label>
-                                  <Input 
-                                    value={enrollmentData.secret} 
-                                    readOnly 
-                                    className="font-mono text-sm"
-                                  />
-                                  <p className="text-xs text-muted-foreground">
-                                    Use this key if you cannot scan the QR code
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <p className="text-sm text-blue-800">
+                                    <strong>Note:</strong> You'll be redirected to Guardian where you can scan the QR code with your authenticator app.
                                   </p>
                                 </div>
                               </div>
                             )}
                             
-                            {factor.type === 'totp' && verificationStep === 'verify' && (
-                              <div className="space-y-2">
-                                <Label htmlFor="totp-code">Verification Code</Label>
-                                <Input
-                                  id="totp-code"
-                                  placeholder="Enter 6-digit code"
-                                  value={enrollmentData.verificationCode}
-                                  onChange={(e) => setEnrollmentData({
-                                    ...enrollmentData,
-                                    verificationCode: e.target.value
-                                  })}
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                  Enter the code from your authenticator app
-                                </p>
+                            {factor.type === 'totp-otp' && verificationStep === 'setup' && (
+                              <div className="space-y-4">
+                                <div className="text-center">
+                                  <div className="inline-block p-6 bg-purple-50 border border-purple-200 rounded-lg">
+                                    <QrCode className="w-16 h-16 mx-auto text-purple-600" />
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-3">
+                                    Click "Setup Authenticator App" to get started
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <p className="text-sm text-blue-800">
+                                    <strong>Note:</strong> You'll be redirected to Guardian to scan a QR code with apps like Google Authenticator or Authy.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {factor.type === 'reset-mfa' && verificationStep === 'setup' && (
+                              <div className="space-y-4">
+                                <div className="text-center">
+                                  <div className="inline-block p-6 bg-red-50 border border-red-200 rounded-lg">
+                                    <AlertTriangle className="w-16 h-16 mx-auto text-red-600" />
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-3">
+                                    This will remove all MFA enrollments from your account
+                                  </p>
+                                </div>
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <p className="text-sm text-red-800">
+                                    <strong>Warning:</strong> This action cannot be undone. You will need to set up MFA again from scratch.
+                                  </p>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -739,10 +884,14 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                               <Button 
                                 onClick={() => handleEnrollFactor(factor.type)}
                                 disabled={loading || (factor.type === 'sms' && !enrollmentData.phoneNumber)}
+                                variant={factor.type === 'reset-mfa' ? 'destructive' : 'default'}
                               >
                                 {loading ? 'Processing...' : (
                                   factor.type === 'sms' ? 'Verify Phone via SMS' :
-                                  factor.type === 'webauthn' ? 'Setup WebAuthn' :
+                                  factor.type === 'webauthn' ? 'Enroll MFA Factor' :
+                                  factor.type === 'totp' ? 'Setup Guardian App' :
+                                  factor.type === 'totp-otp' ? 'Setup Authenticator App' :
+                                  factor.type === 'reset-mfa' ? 'Reset All MFA' :
                                   'Continue'
                                 )}
                               </Button>
