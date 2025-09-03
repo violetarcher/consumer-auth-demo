@@ -113,11 +113,11 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
               (e.type === 'otp' && factor.type === 'totp')
             );
             
-            // Show Reset MFA option only when user has enrollments
+            // Always show Reset MFA option
             if (factor.type === 'reset-mfa') {
               return {
                 ...factor,
-                enabled: hasAnyEnrollments,
+                enabled: true,
                 verified: false
               };
             }
@@ -501,6 +501,45 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
     }
   };
 
+  const handleResetMFA = async () => {
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/mfa-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+
+      if (response.ok) {
+        toast({
+          title: "MFA Reset Successful",
+          description: "All MFA enrollments have been removed. Refreshing page...",
+        });
+        
+        // Refresh the page to reflect the changes
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        const error = await response.json();
+        toast({
+          title: "MFA reset failed",
+          description: error.details || error.error || "Failed to reset MFA enrollments",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Network error",
+        description: "Failed to connect to server. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDisableFactor = async (factorType: string) => {
     const enrollment = enrollments.find(e => 
       (e.type === 'sms' && factorType === 'sms') ||
@@ -717,11 +756,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                 if (factor.type === 'sms' && user?.phone_verified) {
                   return false;
                 }
-                // Only show Reset MFA option when user has enrollments
-                if (factor.type === 'reset-mfa') {
-                  return factor.enabled;
-                }
-                // Always show other factors
+                // Always show all factors including Reset MFA
                 return true;
               })
               .map((factor) => (
@@ -735,7 +770,16 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {factor.enabled ? (
+                    {factor.type === 'reset-mfa' ? (
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={() => handleResetMFA()}
+                        disabled={loading}
+                      >
+                        {loading ? 'Resetting...' : 'Reset'}
+                      </Button>
+                    ) : factor.enabled ? (
                       <>
                         <Badge variant="default" className="flex items-center gap-1">
                           <Check className="w-3 h-3" />
