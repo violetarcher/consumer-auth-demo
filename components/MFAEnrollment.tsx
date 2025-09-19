@@ -249,10 +249,6 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
           console.log('Extracted enrollment URL:', enrollmentUrl);
           
           if (enrollmentUrl) {
-            // Domain replacement if needed
-            if (enrollmentUrl.includes('login.consumerauth.com')) {
-              enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
-            }
             
             console.log('Final enrollment URL after domain replacement:', enrollmentUrl);
             
@@ -300,10 +296,6 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
           console.log('Extracted enrollment URL:', enrollmentUrl);
           
           if (enrollmentUrl) {
-            // Domain replacement if needed
-            if (enrollmentUrl.includes('login.consumerauth.com')) {
-              enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
-            }
             
             console.log('Final enrollment URL after domain replacement:', enrollmentUrl);
             

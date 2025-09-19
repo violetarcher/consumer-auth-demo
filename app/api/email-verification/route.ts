@@ -21,7 +21,7 @@ export async function POST() {
     try {
       // Initialize Auth0 Management API client
       const management = new ManagementClient({
-        domain: process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', ''),
+        domain: process.env.AUTH0_MANAGEMENT_DOMAIN!,
         clientId: process.env.AUTH0_M2M_CLIENT_ID!,
         clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
       });

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     try {
       // Initialize Auth0 Management API client
       const management = new ManagementClient({
-        domain: process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', ''),
+        domain: process.env.AUTH0_MANAGEMENT_DOMAIN!,
         clientId: process.env.AUTH0_M2M_CLIENT_ID!,
         clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
       });
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 2: Use Guardian MFA API to get and delete enrollments
-      const domain = process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', '');
+      const domain = process.env.AUTH0_MANAGEMENT_DOMAIN!;
       
       // Get Guardian MFA token (different audience)
       const guardianMfaTokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {

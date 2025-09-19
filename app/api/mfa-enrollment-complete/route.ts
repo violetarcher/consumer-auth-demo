@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     try {
       // Initialize Auth0 Management API client
       const management = new ManagementClient({
-        domain: process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', ''),
+        domain: process.env.AUTH0_MANAGEMENT_DOMAIN!,
         clientId: process.env.AUTH0_M2M_CLIENT_ID!,
         clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
       });
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       const guardianAccessToken = guardianTokenData.access_token;
       
       // Query Guardian API for user's MFA enrollments
-      const domain = process.env.AUTH0_ISSUER_BASE_URL!.replace('https://', '');
+      const domain = process.env.AUTH0_MANAGEMENT_DOMAIN!;
       const enrollmentsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/enrollments`, {
         method: 'GET',
         headers: {

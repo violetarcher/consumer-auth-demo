@@ -78,10 +78,6 @@ export async function POST(request: NextRequest) {
       const ticketData = await ticketResponse.json();
       let enrollmentUrl = ticketData.ticket_url;
       
-      // Replace domain if using custom domain
-      if (enrollmentUrl && enrollmentUrl.includes('login.consumerauth.com')) {
-        enrollmentUrl = enrollmentUrl.replace('login.consumerauth.com', 'archfaktor.us.auth0.com');
-      }
 
       return NextResponse.json({
         success: true,

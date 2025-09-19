@@ -12,6 +12,14 @@ export async function GET(request: NextRequest) {
     // Get access token
     const { accessToken } = await getAccessToken();
     
+    // Debug ID token specifically
+    console.log('ID Token details:', {
+      hasIdToken: !!session.idToken,
+      idTokenType: typeof session.idToken,
+      idTokenLength: session.idToken ? session.idToken.length : 0,
+      idTokenPreview: session.idToken ? session.idToken.substring(0, 50) + '...' : 'null'
+    });
+    
     return NextResponse.json({
       accessToken: accessToken || null,
       idToken: session.idToken || null,
