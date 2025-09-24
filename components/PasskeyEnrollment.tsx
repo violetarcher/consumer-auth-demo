@@ -41,6 +41,85 @@ export function PasskeyEnrollment({ user }: PasskeyEnrollmentProps = {}) {
     }
   }, [user]);
 
+  const retryEnrollmentWithToken = async (accessToken: string) => {
+    try {
+      // Step 1: Initiate passkey enrollment with the external token
+      console.log('Retrying passkey enrollment with external token...');
+      const initiateResponse = await fetch('/api/passkey-enrollment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step: 'initiate', externalToken: accessToken })
+      });
+
+      if (!initiateResponse.ok) {
+        const error = await initiateResponse.json();
+        throw new Error(error.details || error.error || 'Failed to initiate passkey enrollment');
+      }
+
+      const { authSession, publicKeyCreationOptions } = await initiateResponse.json();
+      console.log('Passkey enrollment initiated with external token, creating credential...');
+
+      // Continue with the rest of the enrollment process
+      await completePasskeyEnrollment(authSession, publicKeyCreationOptions, accessToken);
+    } catch (error) {
+      console.error('Passkey enrollment retry error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to enroll passkey';
+      toast({
+        title: "Passkey enrollment failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+      setEnrolling(false);
+    }
+  };
+
+  const completePasskeyEnrollment = async (authSession: string, publicKeyCreationOptions: any, accessToken?: string) => {
+    // Step 2: Create the passkey using WebAuthn API
+    const credential = await navigator.credentials.create({
+      publicKey: publicKeyCreationOptions
+    }) as PublicKeyCredential;
+
+    if (!credential) {
+      throw new Error('Failed to create passkey credential');
+    }
+
+    // Step 3: Verify the enrollment with Auth0
+    console.log('Verifying passkey enrollment...');
+    const verifyResponse = await fetch('/api/passkey-enrollment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        step: 'verify',
+        authSession,
+        externalToken: accessToken,
+        credential: {
+          id: credential.id,
+          rawId: Array.from(new Uint8Array(credential.rawId)),
+          type: credential.type,
+          response: {
+            clientDataJSON: Array.from(new Uint8Array(credential.response.clientDataJSON)),
+            attestationObject: Array.from(new Uint8Array((credential.response as AuthenticatorAttestationResponse).attestationObject))
+          }
+        }
+      })
+    });
+
+    if (!verifyResponse.ok) {
+      const error = await verifyResponse.json();
+      throw new Error(error.details || error.error || 'Failed to verify passkey enrollment');
+    }
+
+    const result = await verifyResponse.json();
+    console.log('Passkey enrollment completed successfully');
+
+    toast({
+      title: "Passkey enrolled successfully",
+      description: "Your passkey has been registered and can now be used for authentication.",
+    });
+  };
+
   const handleEnrollPasskey = async () => {
     setLoading(true);
     setEnrolling(true);
@@ -66,6 +145,54 @@ export function PasskeyEnrollment({ user }: PasskeyEnrollmentProps = {}) {
 
       if (!initiateResponse.ok) {
         const error = await initiateResponse.json();
+        
+        // Check if authorization is required for My Account API
+        if (error.error === 'authorization_required' && error.authorizationUrl) {
+          console.log('Authorization required for My Account API, opening popup...');
+          
+          // Open authorization in popup window
+          const popup = window.open(
+            error.authorizationUrl,
+            'passkey-auth',
+            'width=500,height=600,scrollbars=yes,resizable=yes'
+          );
+          
+          // Handle popup blocked or closed
+          const checkClosed = setInterval(() => {
+            if (popup?.closed) {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', messageHandler);
+              setLoading(false);
+              setEnrolling(false);
+              toast({
+                title: "Authorization cancelled",
+                description: "Passkey enrollment was cancelled.",
+                variant: "destructive"
+              });
+            }
+          }, 1000);
+
+          // Listen for the authorization result
+          const messageHandler = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+            
+            if (event.data.type === 'PASSKEY_AUTH_SUCCESS') {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', messageHandler);
+              // Retry the enrollment with the new token
+              retryEnrollmentWithToken(event.data.accessToken);
+            } else if (event.data.type === 'PASSKEY_AUTH_ERROR') {
+              clearInterval(checkClosed);
+              window.removeEventListener('message', messageHandler);
+              throw new Error(`Authorization failed: ${event.data.description || event.data.error}`);
+            }
+          };
+          
+          window.addEventListener('message', messageHandler);
+          
+          return;
+        }
+        
         throw new Error(error.details || error.error || 'Failed to initiate passkey enrollment');
       }
 

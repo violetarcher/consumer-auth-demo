@@ -10,52 +10,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { step } = body;
+    const { step, externalToken } = body;
 
-    // For My Account API, we need to get a token with the specific /me/ audience
-    // Since the default audience is Management API, we need to request a new token
-    const myAccountAudience = `${process.env.AUTH0_ISSUER_BASE_URL}/me/`;
+    // Get access token for My Account API
     let accessToken: string;
     
-    try {
-      // Get an access token specifically for the My Account API audience
-      const tokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.AUTH0_M2M_CLIENT_ID,
-          client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
-          audience: myAccountAudience,
-          grant_type: 'client_credentials',
-          scope: 'create:me:authentication_methods'
-        })
-      });
-
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error('Failed to get My Account API token:', tokenResponse.status, errorText);
+    if (externalToken) {
+      // Use the token provided from the popup authorization
+      accessToken = externalToken;
+      console.log('Using external access token from popup authorization');
+    } else {
+      // Get the default access token (already has My Account API audience and scope)
+      try {
+        const { accessToken: userAccessToken } = await getAccessToken();
+        
+        if (!userAccessToken) {
+          return NextResponse.json({ 
+            error: 'No access token available'
+          }, { status: 401 });
+        }
+        
+        accessToken = userAccessToken;
+        console.log('Using default access token for My Account API');
+      } catch (tokenError) {
+        console.error('Error getting access token:', tokenError);
         return NextResponse.json({ 
-          error: 'Failed to get My Account API access token',
-          details: errorText
-        }, { status: 500 });
+          error: 'Failed to get access token',
+          details: tokenError instanceof Error ? tokenError.message : 'Unknown error'
+        }, { status: 401 });
       }
-
-      const tokenData = await tokenResponse.json();
-      accessToken = tokenData.access_token;
-
-      console.log('Successfully got My Account API access token');
-    } catch (tokenError) {
-      console.error('Error getting My Account API token:', tokenError);
-      return NextResponse.json({ 
-        error: 'Failed to authenticate with My Account API' 
-      }, { status: 500 });
     }
 
     if (step === 'initiate') {
       // Step 1: Initiate passkey enrollment using My Account API
+      const identity = session.user.sub;
       console.log('Initiating passkey enrollment for user:', session.user.email);
+      console.log('Using identity:', identity, 'from sub:', session.user.sub);
 
-      const enrollmentResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/me/v1/authentication-methods`, {
+      // Use the My Account API with the Management API domain
+      const enrollmentResponse = await fetch(`https://${process.env.AUTH0_MANAGEMENT_DOMAIN}/me/v1/authentication-methods`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -63,9 +56,7 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           type: 'passkey',
-          // Use the default database connection name - adjust as needed  
-          connection: process.env.AUTH0_DATABASE_CONNECTION || 'Username-Password-Authentication',
-          identity: session.user.sub
+          identity: identity
         })
       });
 
@@ -82,12 +73,13 @@ export async function POST(request: NextRequest) {
 
       const enrollmentData = await enrollmentResponse.json();
       console.log('Passkey enrollment initiated successfully via My Account API');
+      console.log('Raw enrollment data:', JSON.stringify(enrollmentData, null, 2));
 
       return NextResponse.json({
         success: true,
         message: 'Passkey enrollment initiated',
         authSession: enrollmentData.auth_session,
-        publicKeyCreationOptions: enrollmentData.public_key_creation_options
+        publicKeyCreationOptions: enrollmentData.authn_params_public_key
       });
 
     } else if (step === 'verify') {
@@ -102,7 +94,7 @@ export async function POST(request: NextRequest) {
 
       console.log('Verifying passkey enrollment for user:', session.user.email);
 
-      const verifyResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/me/v1/authentication-methods/passkey|new/verify`, {
+      const verifyResponse = await fetch(`https://${process.env.AUTH0_MANAGEMENT_DOMAIN}/me/v1/authentication-methods/passkey|new/verify`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
