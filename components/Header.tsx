@@ -49,7 +49,7 @@ export default function Header() {
                   Profile
                 </Link>
                 <a
-                  href="/auth/logout"
+                  href="/api/auth/logout"
                   className="text-gray-700 hover:text-indigo-600 font-medium"
                 >
                   Sign Out
@@ -58,13 +58,13 @@ export default function Header() {
             ) : (
               <div className="flex items-center space-x-3">
                 <a
-                  href="/auth/login"
+                  href="/api/auth/login"
                   className="text-gray-700 hover:text-indigo-600 font-medium"
                 >
                   Sign In
                 </a>
                 <a
-                  href="/auth/login"
+                  href="/api/auth/login"
                   className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-xl font-semibold hover:shadow-lg transition-all"
                 >
                   Get Started

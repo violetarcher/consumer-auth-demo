@@ -1,0 +1,99 @@
+{
+  "rendering_mode": "advanced",
+  "context_configuration": [
+    "branding.settings",
+    "branding.themes.default",
+    "screen.texts",
+    "tenant.name",
+    "client.name",
+    "screen.prompt"
+  ],
+  "head_tags": [
+    {
+      "tag": "meta",
+      "attributes": {
+        "charset": "utf-8"
+      }
+    },
+    {
+      "tag": "meta",
+      "attributes": {
+        "name": "viewport",
+        "content": "width=device-width, initial-scale=1.0"
+      }
+    },
+    {
+      "tag": "meta",
+      "attributes": {
+        "name": "description",
+        "content": "Secure login powered by ConsumerAuth"
+      }
+    },
+    {
+      "tag": "title",
+      "content": "Sign In | ConsumerAuth"
+    },
+    {
+      "tag": "link",
+      "attributes": {
+        "rel": "preconnect",
+        "href": "https://fonts.googleapis.com"
+      }
+    },
+    {
+      "tag": "link",
+      "attributes": {
+        "rel": "preconnect",
+        "href": "https://fonts.gstatic.com",
+        "crossorigin": ""
+      }
+    },
+    {
+      "tag": "link",
+      "attributes": {
+        "rel": "stylesheet",
+        "href": "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      }
+    },
+    {
+      "tag": "script",
+      "attributes": {
+        "src": "https://cdn.auth0.com/js/auth0-acul-js/2.0.0/auth0-acul-js.production.js"
+      }
+    },
+    {
+      "tag": "link",
+      "attributes": {
+        "rel": "stylesheet",
+        "href": "http://localhost:4000/api/auth0-assets/styles.css"
+      }
+    },
+    {
+      "tag": "script",
+      "attributes": {
+        "src": "http://localhost:4000/api/auth0-assets/login-id-screen.js",
+        "defer": ""
+      }
+    },
+    {
+      "tag": "style",
+      "content": ":root{--primary:#020817;--primary-fg:#f8fafc;--secondary:#f1f5f9;--muted-fg:#64748b;--border:#e2e8f0;--bg:#fff;--fg:#0f172a;--destructive:#ef4444}"
+    },
+    {
+      "tag": "link",
+      "attributes": {
+        "rel": "icon",
+        "type": "image/x-icon",
+        "href": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0ibTcuNSA0LjI3IDkgNS4xNSIgc3Ryb2tlPSIjMDIwODE3IiBzdHJva2Utd2lkdGg9IjIiLz4KPHBhdGggZD0iTTIxIDhhMiAyIDAgMCAwLTEtMS43M2wtNy00YTIgMiAwIDAgMC0yIDBsLTcgNEEyIDIgMCAwIDAgMyA4djhhMiAyIDAgMCAwIDEgMS43M2w3IDRhMiAyIDAgMCAwIDIgMGw3LTRBMiAyIDAgMCAwIDIxIDE2WiIgc3Ryb2tlPSIjMDIwODE3IiBzdHJva2Utd2lkdGg9IjIiLz4KPHBhdGggZD0ibTMuMyA3IDguNyA1IDguNy01IiBzdHJva2U9IiMwMjA4MTciIHN0cm9rZS13aWR0aD0iMiIvPgo8cGF0aCBkPSJNMTIgMjJWMTIiIHN0cm9rZT0iIzAyMDgxNyIgc3Ryb2tlLXdpZHRoPSIyIi8+Cjwvc3ZnPgo="
+      }
+    },
+    {
+      "tag": "meta",
+      "attributes": {
+        "name": "theme-color",
+        "content": "#020817"
+      }
+    }
+  ],
+  "default_head_tags_disabled": false
+}

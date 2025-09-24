@@ -49,7 +49,7 @@ export default function HomePageClient() {
       ) : (
         <div>
           <p>Please sign in to access your profile.</p>
-          <a 
+          <a
             href="/api/auth/login"
             style={{
               padding: '10px 20px',

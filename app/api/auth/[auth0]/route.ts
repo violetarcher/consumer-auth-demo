@@ -12,22 +12,19 @@ export const GET = handleAuth({
     // Get other parameters
     const prompt = url.searchParams.get('prompt');
     const maxAge = url.searchParams.get('max_age');
-    const loginHint = url.searchParams.get('login_hint');
+    // Removed login_hint to force Auth0 to show login-id screen
 
     const authorizationParams: any = {};
-    
+
     if (isStepUp) {
       // For step-up MFA, set ACR values without prompt to avoid password re-entry
       authorizationParams.acr_values = acrValues;
-      // Don't include prompt for step-up to avoid forcing login screen
-      if (loginHint) {
-        authorizationParams.login_hint = loginHint;
-      }
+      // Don't include login_hint for step-up to ensure proper flow
     } else {
-      // For regular login, pass through all parameters
+      // For regular login, pass through parameters but exclude login_hint
       if (acrValues) authorizationParams.acr_values = acrValues;
       if (prompt) authorizationParams.prompt = prompt;
-      if (loginHint) authorizationParams.login_hint = loginHint;
+      // Explicitly NOT setting login_hint to force identifier collection
     }
     
     if (maxAge) {
