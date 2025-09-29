@@ -36,40 +36,447 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     CustomPasswordScreen.prototype.render = function() {
-      console.log('Rendering custom password screen');
+      console.log('Rendering dramatic custom password screen');
 
-      // Create main container
+      // Clear existing content and set body styles
+      document.body.innerHTML = '';
+      document.body.style.margin = '0';
+      document.body.style.padding = '0';
+      document.body.style.fontFamily = 'Inter, system-ui, -apple-system, sans-serif';
+      document.body.style.overflow = 'hidden';
+
+      // Create main split-screen container with password theme
       this.container = document.createElement('div');
-      this.container.className = 'auth0-login-container';
+      this.container.style.cssText = `
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+        background: linear-gradient(135deg, #8360c3 0%, #2ebf91 50%, #f093fb 100%);
+        position: relative;
+      `;
 
-      // Create the password card
-      const card = this.createCard();
-      this.container.appendChild(card);
+      // Create left panel (brand/visual)
+      const leftPanel = this.createLeftPanel();
+      this.container.appendChild(leftPanel);
+
+      // Create right panel (form)
+      const rightPanel = this.createRightPanel();
+      this.container.appendChild(rightPanel);
+
+      // Add floating particles
+      this.addFloatingParticles();
 
       // Append to body
       document.body.appendChild(this.container);
 
       // Initialize event listeners
       this.initializeEventListeners();
+
+      // Add entrance animation
+      this.playEntranceAnimation();
     };
 
-    CustomPasswordScreen.prototype.createCard = function() {
-      const card = document.createElement('div');
-      card.className = 'auth0-card';
+    CustomPasswordScreen.prototype.createLeftPanel = function() {
+      const panel = document.createElement('div');
+      panel.style.cssText = `
+        flex: 1;
+        background: linear-gradient(45deg, #6a4c93 0%, #4a90e2 50%, #7b68ee 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+      `;
 
-      // Create header
-      const header = this.createHeader();
-      card.appendChild(header);
+      // Brand section with animated elements
+      const brandContainer = document.createElement('div');
+      brandContainer.style.cssText = `
+        text-align: center;
+        z-index: 2;
+        transform: translateY(-20px);
+      `;
 
-      // Create form container
-      const formContainer = this.createFormContainer();
-      card.appendChild(formContainer);
+      // Large animated logo with password theme
+      const logoContainer = document.createElement('div');
+      logoContainer.style.cssText = `
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 2rem;
+        background: linear-gradient(45deg, #8360c3, #2ebf91, #f093fb);
+        border-radius: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: float 3s ease-in-out infinite;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      `;
 
-      // Create footer
-      const footer = this.createFooter();
-      card.appendChild(footer);
+      const logo = document.createElement('div');
+      logo.innerHTML = brandingConfig.logoIcon;
+      logo.style.cssText = `
+        color: white;
+        transform: scale(3);
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+      `;
+      logoContainer.appendChild(logo);
 
-      return card;
+      // Animated title with password theme
+      const title = document.createElement('h1');
+      title.textContent = 'Welcome Back';
+      title.style.cssText = `
+        color: white;
+        font-size: 2.8rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+        background: linear-gradient(45deg, #8360c3, #2ebf91);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: pulse 2s ease-in-out infinite;
+      `;
+
+      // Password-specific subtitle
+      const subtitle = document.createElement('p');
+      subtitle.textContent = 'Secure • Trusted • Protected';
+      subtitle.style.cssText = `
+        color: rgba(255,255,255,0.9);
+        font-size: 1.2rem;
+        font-weight: 300;
+        margin: 0;
+        letter-spacing: 2px;
+      `;
+
+      brandContainer.appendChild(logoContainer);
+      brandContainer.appendChild(title);
+      brandContainer.appendChild(subtitle);
+      panel.appendChild(brandContainer);
+
+      // Add geometric shapes for visual interest
+      this.addGeometricShapes(panel);
+
+      return panel;
+    };
+
+    CustomPasswordScreen.prototype.createRightPanel = function() {
+      const panel = document.createElement('div');
+      panel.style.cssText = `
+        flex: 1;
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(20px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 3rem;
+        position: relative;
+      `;
+
+      // Glassmorphism form container
+      const formContainer = document.createElement('div');
+      formContainer.style.cssText = `
+        background: rgba(255,255,255,0.25);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 24px;
+        padding: 3rem;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        transform: translateX(20px);
+        opacity: 0;
+        animation: slideInRight 0.8s ease-out 0.3s forwards;
+      `;
+
+      // Form header with email display
+      const header = document.createElement('div');
+      header.style.cssText = 'text-align: center; margin-bottom: 2rem;';
+
+      const welcomeTitle = document.createElement('h2');
+      welcomeTitle.textContent = 'Enter Your Password';
+      welcomeTitle.style.cssText = `
+        color: #1a1a2e;
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+      `;
+
+      // Email display
+      const urlParams = new URLSearchParams(window.location.search);
+      const email = urlParams.get('login_hint') || urlParams.get('email');
+      let welcomeDesc;
+      if (email) {
+        welcomeDesc = document.createElement('p');
+        welcomeDesc.innerHTML = `Signing in as <strong>${email}</strong>`;
+        welcomeDesc.style.cssText = `
+          color: #64748b;
+          font-size: 1rem;
+          margin: 0;
+        `;
+      } else {
+        welcomeDesc = document.createElement('p');
+        welcomeDesc.textContent = 'Enter your password to continue';
+        welcomeDesc.style.cssText = `
+          color: #64748b;
+          font-size: 1rem;
+          margin: 0;
+        `;
+      }
+
+      header.appendChild(welcomeTitle);
+      header.appendChild(welcomeDesc);
+
+      // Form
+      const form = this.createModernForm();
+
+      formContainer.appendChild(header);
+      formContainer.appendChild(form);
+      panel.appendChild(formContainer);
+
+      return panel;
+    };
+
+    CustomPasswordScreen.prototype.createModernForm = function() {
+      const form = document.createElement('form');
+      form.id = 'password-form';
+      form.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      `;
+
+      // Password input group
+      const passwordGroup = document.createElement('div');
+      passwordGroup.style.cssText = 'position: relative;';
+
+      const passwordInput = document.createElement('input');
+      passwordInput.type = 'password';
+      passwordInput.id = 'password';
+      passwordInput.name = 'password';
+      passwordInput.placeholder = 'Enter your password';
+      passwordInput.required = true;
+      passwordInput.autofocus = true;
+      passwordInput.style.cssText = `
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid rgba(131, 96, 195, 0.2);
+        border-radius: 12px;
+        font-size: 1rem;
+        background: rgba(255,255,255,0.8);
+        transition: all 0.3s ease;
+        outline: none;
+        box-sizing: border-box;
+      `;
+
+      // Enhanced focus effects
+      passwordInput.addEventListener('focus', function() {
+        this.style.borderColor = '#8360c3';
+        this.style.background = 'rgba(255,255,255,0.95)';
+        this.style.transform = 'scale(1.02)';
+        this.style.boxShadow = '0 0 20px rgba(131, 96, 195, 0.3)';
+      });
+
+      passwordInput.addEventListener('blur', function() {
+        this.style.borderColor = 'rgba(131, 96, 195, 0.2)';
+        this.style.background = 'rgba(255,255,255,0.8)';
+        this.style.transform = 'scale(1)';
+        this.style.boxShadow = 'none';
+      });
+
+      passwordGroup.appendChild(passwordInput);
+
+      // Submit button with enhanced styling
+      const submitButton = document.createElement('button');
+      submitButton.type = 'submit';
+      submitButton.id = 'submit-button';
+      submitButton.innerHTML = '<span id="submit-text">Continue</span><div id="submit-spinner" style="display: none;">⏳</div>';
+      submitButton.style.cssText = `
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(45deg, #8360c3, #2ebf91);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      `;
+
+      submitButton.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-2px)';
+        this.style.boxShadow = '0 8px 25px rgba(131, 96, 195, 0.4)';
+      });
+
+      submitButton.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+        this.style.boxShadow = 'none';
+      });
+
+      // Back link
+      const backLink = document.createElement('a');
+      backLink.href = '#';
+      backLink.id = 'back-link';
+      backLink.textContent = '← Back to email';
+      backLink.style.cssText = `
+        text-align: center;
+        color: #8360c3;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+      `;
+
+      backLink.addEventListener('mouseenter', function() {
+        this.style.color = '#2ebf91';
+      });
+
+      backLink.addEventListener('mouseleave', function() {
+        this.style.color = '#8360c3';
+      });
+
+      // Forgot password link
+      const forgotLink = document.createElement('a');
+      forgotLink.href = '#';
+      forgotLink.id = 'forgot-password-link';
+      forgotLink.textContent = 'Forgot your password?';
+      forgotLink.style.cssText = `
+        text-align: center;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+        transition: all 0.3s ease;
+      `;
+
+      forgotLink.addEventListener('mouseenter', function() {
+        this.style.color = '#8360c3';
+      });
+
+      forgotLink.addEventListener('mouseleave', function() {
+        this.style.color = '#64748b';
+      });
+
+      // Error container
+      const errorContainer = document.createElement('div');
+      errorContainer.id = 'error-container';
+      errorContainer.style.cssText = `
+        display: none;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        text-align: center;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      `;
+
+      form.appendChild(errorContainer);
+      form.appendChild(passwordGroup);
+      form.appendChild(submitButton);
+      form.appendChild(backLink);
+      form.appendChild(forgotLink);
+
+      return form;
+    };
+
+    CustomPasswordScreen.prototype.addGeometricShapes = function(container) {
+      // Add floating geometric shapes for visual interest
+      for (let i = 0; i < 6; i++) {
+        const shape = document.createElement('div');
+        const isCircle = Math.random() > 0.5;
+        const size = 20 + Math.random() * 40;
+
+        shape.style.cssText = `
+          position: absolute;
+          width: ${size}px;
+          height: ${size}px;
+          background: rgba(255,255,255,0.1);
+          border-radius: ${isCircle ? '50%' : '8px'};
+          top: ${Math.random() * 100}%;
+          left: ${Math.random() * 100}%;
+          animation: float ${3 + Math.random() * 2}s ease-in-out infinite;
+          animation-delay: ${Math.random() * 2}s;
+        `;
+
+        container.appendChild(shape);
+      }
+    };
+
+    CustomPasswordScreen.prototype.addFloatingParticles = function() {
+      // Add floating particles for enhanced visual appeal
+      for (let i = 0; i < 8; i++) {
+        const particle = document.createElement('div');
+        const size = 3 + Math.random() * 5;
+
+        particle.style.cssText = `
+          position: absolute;
+          width: ${size}px;
+          height: ${size}px;
+          background: linear-gradient(45deg, #8360c3, #2ebf91, #f093fb);
+          border-radius: 50%;
+          top: ${Math.random() * 100}vh;
+          left: ${Math.random() * 100}vw;
+          animation: floatUp ${5 + Math.random() * 5}s linear infinite;
+          opacity: 0.7;
+          z-index: 1;
+        `;
+
+        this.container.appendChild(particle);
+      }
+
+      // Add CSS keyframes for particles
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes floatUp {
+          0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+          10% { opacity: 0.7; }
+          90% { opacity: 0.7; }
+          100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+    };
+
+    CustomPasswordScreen.prototype.playEntranceAnimation = function() {
+      // Add entrance animation keyframes
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideInLeft {
+          0% { transform: translateX(-100px); opacity: 0; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideInRight {
+          0% { transform: translateX(100px); opacity: 0; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+
+        @keyframes fadeIn {
+          0% { opacity: 0; transform: translateY(20px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // Trigger entrance animations
+      setTimeout(() => {
+        const leftPanel = this.container.querySelector('div:first-child');
+        if (leftPanel) {
+          leftPanel.style.animation = 'slideInLeft 0.8s ease-out forwards';
+        }
+      }, 100);
     };
 
     CustomPasswordScreen.prototype.createHeader = function() {
@@ -223,32 +630,38 @@ document.addEventListener('DOMContentLoaded', function() {
       const backLink = document.getElementById('back-link');
       const forgotPasswordLink = document.getElementById('forgot-password-link');
 
-      // Form submission
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        self.handlePasswordSubmit();
-      });
+      // Check if elements exist before adding listeners
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          self.handlePasswordSubmit();
+        });
+      }
 
-      // Back to email
-      backLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        self.handleBackToEmail();
-      });
+      if (backLink) {
+        backLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          self.handleBackToEmail();
+        });
+      }
 
-      // Forgot password
-      forgotPasswordLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        self.handleForgotPassword();
-      });
+      if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          self.handleForgotPassword();
+        });
+      }
 
       // Input validation
       const passwordInput = document.getElementById('password');
-      passwordInput.addEventListener('blur', function() {
-        self.validateInput(passwordInput);
-      });
-      passwordInput.addEventListener('input', function() {
-        self.clearInputError(passwordInput);
-      });
+      if (passwordInput) {
+        passwordInput.addEventListener('blur', function() {
+          self.validateInput(passwordInput);
+        });
+        passwordInput.addEventListener('input', function() {
+          self.clearInputError(passwordInput);
+        });
+      }
     };
 
     CustomPasswordScreen.prototype.handlePasswordSubmit = function() {

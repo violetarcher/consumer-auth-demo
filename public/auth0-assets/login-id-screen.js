@@ -94,40 +94,190 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       render() {
-        console.log('Rendering ConsumerAuth login-id screen');
+        console.log('Rendering ConsumerAuth login-id screen with dramatic design');
 
-        // Create main container
+        // Clear existing content and set body styles
+        document.body.innerHTML = '';
+        document.body.style.margin = '0';
+        document.body.style.padding = '0';
+        document.body.style.fontFamily = 'Inter, system-ui, -apple-system, sans-serif';
+        document.body.style.overflow = 'hidden';
+
+        // Create main split-screen container
         this.container = document.createElement('div');
-        this.container.className = 'auth0-login-container';
+        this.container.style.cssText = `
+          display: flex;
+          height: 100vh;
+          width: 100vw;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          position: relative;
+        `;
 
-        // Create the login card
-        const card = this.createCard();
-        this.container.appendChild(card);
+        // Create left panel (brand/visual)
+        const leftPanel = this.createLeftPanel();
+        this.container.appendChild(leftPanel);
+
+        // Create right panel (form)
+        const rightPanel = this.createRightPanel();
+        this.container.appendChild(rightPanel);
+
+        // Add floating particles
+        this.addFloatingParticles();
 
         // Append to body
         document.body.appendChild(this.container);
 
         // Initialize event listeners
         this.initializeEventListeners();
+
+        // Add entrance animation
+        this.playEntranceAnimation();
       }
 
-      createCard() {
-        const card = document.createElement('div');
-        card.className = 'auth0-card';
+      createLeftPanel() {
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+          flex: 1;
+          background: linear-gradient(45deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          position: relative;
+          overflow: hidden;
+        `;
 
-        // Create header
-        const header = this.createHeader();
-        card.appendChild(header);
+        // Brand section with animated elements
+        const brandContainer = document.createElement('div');
+        brandContainer.style.cssText = `
+          text-align: center;
+          z-index: 2;
+          transform: translateY(-20px);
+        `;
 
-        // Create form container
-        const formContainer = this.createFormContainer();
-        card.appendChild(formContainer);
+        // Large animated logo
+        const logoContainer = document.createElement('div');
+        logoContainer.style.cssText = `
+          width: 120px;
+          height: 120px;
+          margin: 0 auto 2rem;
+          background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+          border-radius: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: float 3s ease-in-out infinite;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        `;
 
-        // Create footer
-        const footer = this.createFooter();
-        card.appendChild(footer);
+        const logo = document.createElement('div');
+        logo.innerHTML = brandingConfig.logoIcon;
+        logo.style.cssText = `
+          color: white;
+          transform: scale(3);
+          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        `;
+        logoContainer.appendChild(logo);
 
-        return card;
+        // Animated title
+        const title = document.createElement('h1');
+        title.textContent = brandingConfig.companyName;
+        title.style.cssText = `
+          color: white;
+          font-size: 3rem;
+          font-weight: 700;
+          margin: 0 0 1rem 0;
+          background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: pulse 2s ease-in-out infinite;
+        `;
+
+        // Subtitle
+        const subtitle = document.createElement('p');
+        subtitle.textContent = 'Secure • Fast • Reliable';
+        subtitle.style.cssText = `
+          color: rgba(255,255,255,0.8);
+          font-size: 1.2rem;
+          font-weight: 300;
+          margin: 0;
+          letter-spacing: 2px;
+        `;
+
+        brandContainer.appendChild(logoContainer);
+        brandContainer.appendChild(title);
+        brandContainer.appendChild(subtitle);
+        panel.appendChild(brandContainer);
+
+        // Add geometric shapes for visual interest
+        this.addGeometricShapes(panel);
+
+        return panel;
+      }
+
+      createRightPanel() {
+        const panel = document.createElement('div');
+        panel.style.cssText = `
+          flex: 1;
+          background: rgba(255,255,255,0.95);
+          backdrop-filter: blur(20px);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          padding: 3rem;
+          position: relative;
+        `;
+
+        // Glassmorphism form container
+        const formContainer = document.createElement('div');
+        formContainer.style.cssText = `
+          background: rgba(255,255,255,0.25);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 24px;
+          padding: 3rem;
+          width: 100%;
+          max-width: 400px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+          transform: translateX(20px);
+          opacity: 0;
+          animation: slideInRight 0.8s ease-out 0.3s forwards;
+        `;
+
+        // Form header
+        const header = document.createElement('div');
+        header.style.cssText = 'text-align: center; margin-bottom: 2rem;';
+
+        const welcomeTitle = document.createElement('h2');
+        welcomeTitle.textContent = brandingConfig.welcomeTitle;
+        welcomeTitle.style.cssText = `
+          color: #1a1a2e;
+          font-size: 2rem;
+          font-weight: 600;
+          margin: 0 0 0.5rem 0;
+        `;
+
+        const welcomeDesc = document.createElement('p');
+        welcomeDesc.textContent = brandingConfig.welcomeDescription;
+        welcomeDesc.style.cssText = `
+          color: #64748b;
+          font-size: 1rem;
+          margin: 0;
+        `;
+
+        header.appendChild(welcomeTitle);
+        header.appendChild(welcomeDesc);
+
+        // Form
+        const form = this.createModernForm();
+
+        formContainer.appendChild(header);
+        formContainer.appendChild(form);
+        panel.appendChild(formContainer);
+
+        return panel;
       }
 
       createHeader() {
@@ -273,37 +423,35 @@ document.addEventListener('DOMContentLoaded', function() {
       initializeEventListeners() {
         const self = this;
         const form = document.getElementById('login-form');
-        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        const signupLink = document.getElementById('signup-link');
 
         // Form submission
-        form.addEventListener('submit', function(e) {
-          e.preventDefault();
-          self.handleLogin();
-        });
-
-        // Forgot password
-        forgotPasswordLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          self.handleForgotPassword();
-        });
+        if (form) {
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            self.handleLogin();
+          });
+        }
 
         // Signup link
-        const signupLink = document.getElementById('signup-link');
-        signupLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          self.handleSignup();
-        });
+        if (signupLink) {
+          signupLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            self.handleSignup();
+          });
+        }
 
-        // Input validation
-        const inputs = document.querySelectorAll('.auth0-input');
-        inputs.forEach(function(input) {
-          input.addEventListener('blur', function() {
-            self.validateInput(input);
+        // Input validation for the new modern form
+        const usernameInput = document.getElementById('username');
+        if (usernameInput) {
+          usernameInput.addEventListener('input', function() {
+            // Clear any previous errors when user starts typing
+            const errorContainer = document.getElementById('error-container');
+            if (errorContainer) {
+              errorContainer.style.display = 'none';
+            }
           });
-          input.addEventListener('input', function() {
-            self.clearInputError(input);
-          });
-        });
+        }
       }
 
       handleLogin() {
@@ -504,6 +652,197 @@ document.addEventListener('DOMContentLoaded', function() {
           submitText.style.display = 'inline';
           submitSpinner.style.display = 'none';
         }
+      }
+
+      createModernForm() {
+        const form = document.createElement('form');
+        form.id = 'login-form';
+        form.style.cssText = 'width: 100%;';
+
+        // Error container
+        const errorContainer = document.createElement('div');
+        errorContainer.id = 'error-container';
+        errorContainer.style.display = 'none';
+        form.appendChild(errorContainer);
+
+        // Modern email input
+        const inputGroup = document.createElement('div');
+        inputGroup.style.cssText = 'margin-bottom: 2rem; position: relative;';
+
+        const input = document.createElement('input');
+        input.id = 'username';
+        input.name = 'username';
+        input.type = 'email';
+        input.placeholder = 'Enter your email address';
+        input.required = true;
+        input.style.cssText = `
+          width: 100%;
+          padding: 1.25rem 1.5rem;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-radius: 16px;
+          background: rgba(255,255,255,0.1);
+          backdrop-filter: blur(10px);
+          color: #1a1a2e;
+          font-size: 1rem;
+          font-weight: 500;
+          box-sizing: border-box;
+          transition: all 0.3s ease;
+          outline: none;
+        `;
+
+        // Add focus effects
+        input.addEventListener('focus', () => {
+          input.style.borderColor = '#4ecdc4';
+          input.style.background = 'rgba(255,255,255,0.2)';
+          input.style.transform = 'scale(1.02)';
+        });
+
+        input.addEventListener('blur', () => {
+          input.style.borderColor = 'rgba(255,255,255,0.3)';
+          input.style.background = 'rgba(255,255,255,0.1)';
+          input.style.transform = 'scale(1)';
+        });
+
+        inputGroup.appendChild(input);
+
+        // Modern submit button
+        const submitButton = document.createElement('button');
+        submitButton.type = 'submit';
+        submitButton.id = 'submit-button';
+        submitButton.innerHTML = '<span id="submit-text">Continue</span><div id="submit-spinner" style="display: none;">⏳</div>';
+        submitButton.style.cssText = `
+          width: 100%;
+          padding: 1.25rem;
+          background: linear-gradient(45deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          border-radius: 16px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          margin-bottom: 2rem;
+          box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        `;
+
+        submitButton.addEventListener('mouseenter', () => {
+          submitButton.style.transform = 'translateY(-2px)';
+          submitButton.style.boxShadow = '0 12px 40px rgba(102, 126, 234, 0.4)';
+        });
+
+        submitButton.addEventListener('mouseleave', () => {
+          submitButton.style.transform = 'translateY(0)';
+          submitButton.style.boxShadow = '0 8px 32px rgba(102, 126, 234, 0.3)';
+        });
+
+        // Signup link
+        const signupContainer = document.createElement('div');
+        signupContainer.style.cssText = 'text-align: center; margin-top: 1rem;';
+
+        const signupText = document.createElement('span');
+        signupText.textContent = "Don't have an account? ";
+        signupText.style.cssText = 'color: #64748b; font-size: 0.9rem;';
+
+        const signupLink = document.createElement('a');
+        signupLink.href = '#';
+        signupLink.id = 'signup-link';
+        signupLink.textContent = 'Sign up';
+        signupLink.style.cssText = `
+          color: #667eea;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.9rem;
+          transition: all 0.3s ease;
+        `;
+
+        signupLink.addEventListener('mouseenter', () => {
+          signupLink.style.color = '#764ba2';
+          signupLink.style.textDecoration = 'underline';
+        });
+
+        signupLink.addEventListener('mouseleave', () => {
+          signupLink.style.color = '#667eea';
+          signupLink.style.textDecoration = 'none';
+        });
+
+        signupContainer.appendChild(signupText);
+        signupContainer.appendChild(signupLink);
+
+        form.appendChild(inputGroup);
+        form.appendChild(submitButton);
+        form.appendChild(signupContainer);
+
+        return form;
+      }
+
+      addGeometricShapes(container) {
+        // Add floating geometric shapes for visual interest
+        for (let i = 0; i < 5; i++) {
+          const shape = document.createElement('div');
+          const size = Math.random() * 100 + 50;
+          const isCircle = Math.random() > 0.5;
+
+          shape.style.cssText = `
+            position: absolute;
+            width: ${size}px;
+            height: ${size}px;
+            background: linear-gradient(45deg, rgba(255,107,107,0.1), rgba(78,205,196,0.1));
+            border-radius: ${isCircle ? '50%' : '20px'};
+            top: ${Math.random() * 100}%;
+            left: ${Math.random() * 100}%;
+            animation: floatShape ${3 + Math.random() * 2}s ease-in-out infinite;
+            animation-delay: ${Math.random() * 2}s;
+            z-index: 1;
+          `;
+
+          container.appendChild(shape);
+        }
+      }
+
+      addFloatingParticles() {
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+          }
+
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+          }
+
+          @keyframes slideInRight {
+            from {
+              transform: translateX(20px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+
+          @keyframes floatShape {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-10px) rotate(120deg); }
+            66% { transform: translateY(5px) rotate(240deg); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      playEntranceAnimation() {
+        // Add entrance animation to the main container
+        this.container.style.opacity = '0';
+        this.container.style.transform = 'scale(0.95)';
+        this.container.style.transition = 'all 0.8s ease-out';
+
+        setTimeout(() => {
+          this.container.style.opacity = '1';
+          this.container.style.transform = 'scale(1)';
+        }, 100);
       }
     }
 
