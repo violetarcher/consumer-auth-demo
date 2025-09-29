@@ -1,12 +1,12 @@
 /**
- * ConsumerAuth - Auth0 Login-ID Screen Custom JavaScript
+ * ConsumerAuth - Auth0 Signup-Password Screen Custom JavaScript
  * Designed for Auth0 ACUL (Advanced Customizations for Universal Login)
  * Based on Auth0 ACUL SDK implementation patterns
  */
 
-// Initialize custom login screen immediately
+// Initialize custom signup password screen immediately
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, initializing ConsumerAuth custom login...');
+  console.log('DOM loaded, initializing ConsumerAuth custom signup-password screen...');
 
   // Wait for Auth0 ACUL SDK to be available
   function waitForAuth0SDK() {
@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  async function initializeCustomLogin() {
-    console.log('Starting custom login initialization...');
+  async function initializeCustomSignupPassword() {
+    console.log('Starting custom signup-password initialization...');
 
     // Debug: Log URL and parameters
     console.log('Current URL:', window.location.href);
@@ -55,6 +55,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Wait for Auth0 SDK
     const auth0SDK = await waitForAuth0SDK();
+
+    // Get email from URL parameters if available
+    const urlParams = new URLSearchParams(window.location.search);
+    const loginHint = urlParams.get('login_hint') || '';
 
     // Custom branding configuration
     const brandingConfig = {
@@ -68,39 +72,40 @@ document.addEventListener('DOMContentLoaded', function() {
         </svg>
       `,
       primaryColor: '#020817',
-      welcomeTitle: 'Welcome Back',
-      welcomeDescription: 'Enter your email address to continue'
+      welcomeTitle: 'Create Your Password',
+      welcomeDescription: loginHint ? `Create a password for ${loginHint}` : 'Create a secure password for your account'
     };
 
     // Auth0 ACUL SDK Integration
-    class ConsumerAuthLoginIdScreen {
+    class ConsumerAuthSignupPasswordScreen {
       constructor() {
         this.auth0SDK = auth0SDK;
-        this.loginIdManager = null;
+        this.signupPasswordManager = null;
         this.container = null;
+        this.email = loginHint;
 
-        // Try to initialize Login ID manager if SDK is available
+        // Try to initialize Signup Password manager if SDK is available
         if (this.auth0SDK) {
           try {
             // For Auth0 ACUL SDK
-            if (typeof window.Auth0ULP !== 'undefined' && window.Auth0ULP.LoginId) {
-              console.log('Initializing Auth0 ACUL LoginId manager...');
-              this.loginIdManager = new window.Auth0ULP.LoginId();
+            if (typeof window.Auth0ULP !== 'undefined' && window.Auth0ULP.SignupPassword) {
+              console.log('Initializing Auth0 ACUL SignupPassword manager...');
+              this.signupPasswordManager = new window.Auth0ULP.SignupPassword();
             }
           } catch (error) {
-            console.warn('Failed to initialize Auth0 LoginId manager:', error);
+            console.warn('Failed to initialize Auth0 SignupPassword manager:', error);
           }
         }
       }
 
       render() {
-        console.log('Rendering ConsumerAuth login-id screen');
+        console.log('Rendering ConsumerAuth signup-password screen');
 
         // Create main container
         this.container = document.createElement('div');
         this.container.className = 'auth0-login-container';
 
-        // Create the login card
+        // Create the signup card
         const card = this.createCard();
         this.container.appendChild(card);
 
@@ -178,59 +183,78 @@ document.addEventListener('DOMContentLoaded', function() {
         // Main form
         const form = document.createElement('form');
         form.className = 'auth0-form';
-        form.id = 'login-form';
+        form.id = 'signup-password-form';
 
-        // Email/Username field - this is the only field for login-id screen
-        const emailGroup = this.createInputGroup('username', 'Email', 'email', 'Enter your email address');
-        form.appendChild(emailGroup);
+        // Email field (read-only, showing the email from previous screen)
+        if (this.email) {
+          const emailGroup = this.createInputGroup('email', 'Email', 'email', this.email);
+          const emailInput = emailGroup.querySelector('input');
+          emailInput.value = this.email;
+          emailInput.readOnly = true;
+          emailInput.style.backgroundColor = 'var(--secondary)';
+          emailInput.style.color = 'var(--muted-fg)';
+          form.appendChild(emailGroup);
+        }
+
+        // Password field
+        const passwordGroup = this.createInputGroup('password', 'Password', 'password', 'Create a secure password');
+        form.appendChild(passwordGroup);
+
+        // Confirm password field
+        const confirmPasswordGroup = this.createInputGroup('confirm-password', 'Confirm Password', 'password', 'Confirm your password');
+        form.appendChild(confirmPasswordGroup);
+
+        // Password requirements
+        const requirements = document.createElement('div');
+        requirements.className = 'auth0-password-requirements';
+        requirements.style.fontSize = '0.75rem';
+        requirements.style.color = 'var(--muted-fg)';
+        requirements.style.marginTop = '0.5rem';
+        requirements.innerHTML = `
+          <p style="margin: 0 0 0.25rem 0;">Password must contain:</p>
+          <ul style="margin: 0; padding-left: 1rem;">
+            <li>At least 8 characters</li>
+            <li>At least one uppercase letter</li>
+            <li>At least one lowercase letter</li>
+            <li>At least one number</li>
+          </ul>
+        `;
+        form.appendChild(requirements);
 
         // Submit button
         const submitButton = document.createElement('button');
         submitButton.type = 'submit';
         submitButton.className = 'auth0-button auth0-button-primary';
         submitButton.id = 'submit-button';
-        submitButton.innerHTML = '<span id="submit-text">Continue</span><div id="submit-spinner" class="auth0-spinner" style="display: none;"></div>';
+        submitButton.style.marginTop = '1.5rem';
+        submitButton.innerHTML = '<span id="submit-text">Create Account</span><div id="submit-spinner" class="auth0-spinner" style="display: none;"></div>';
         form.appendChild(submitButton);
 
-        // Forgot password link
-        const forgotPassword = document.createElement('div');
-        forgotPassword.style.textAlign = 'center';
-        forgotPassword.style.marginTop = '1rem';
-
-        const forgotLink = document.createElement('a');
-        forgotLink.href = '#';
-        forgotLink.className = 'auth0-link';
-        forgotLink.textContent = 'Forgot your password?';
-        forgotLink.id = 'forgot-password-link';
-
-        forgotPassword.appendChild(forgotLink);
-        form.appendChild(forgotPassword);
-
-        // Signup link
-        const signupSection = document.createElement('div');
-        signupSection.style.textAlign = 'center';
-        signupSection.style.marginTop = '1.5rem';
-        signupSection.style.paddingTop = '1.5rem';
-        signupSection.style.borderTop = '1px solid var(--border)';
-
-        const signupText = document.createElement('p');
-        signupText.style.color = 'var(--muted-fg)';
-        signupText.style.fontSize = '0.875rem';
-        signupText.style.margin = '0 0 0.5rem 0';
-        signupText.textContent = "Don't have an account?";
-
-        const signupLink = document.createElement('a');
-        signupLink.href = '#';
-        signupLink.className = 'auth0-link';
-        signupLink.textContent = 'Sign up';
-        signupLink.id = 'signup-link';
-        signupLink.style.fontWeight = '500';
-
-        signupSection.appendChild(signupText);
-        signupSection.appendChild(signupLink);
-        form.appendChild(signupSection);
-
         container.appendChild(form);
+
+        // Back to signup link
+        const backToSignup = document.createElement('div');
+        backToSignup.style.textAlign = 'center';
+        backToSignup.style.marginTop = '1.5rem';
+        backToSignup.style.paddingTop = '1.5rem';
+        backToSignup.style.borderTop = '1px solid var(--border)';
+
+        const backText = document.createElement('p');
+        backText.style.color = 'var(--muted-fg)';
+        backText.style.fontSize = '0.875rem';
+        backText.style.margin = '0 0 0.5rem 0';
+        backText.textContent = 'Want to use a different email?';
+
+        const backLink = document.createElement('a');
+        backLink.href = '#';
+        backLink.className = 'auth0-link';
+        backLink.textContent = 'Go back';
+        backLink.id = 'back-to-signup-link';
+        backLink.style.fontWeight = '500';
+
+        backToSignup.appendChild(backText);
+        backToSignup.appendChild(backLink);
+        container.appendChild(backToSignup);
 
         return container;
       }
@@ -272,177 +296,177 @@ document.addEventListener('DOMContentLoaded', function() {
 
       initializeEventListeners() {
         const self = this;
-        const form = document.getElementById('login-form');
-        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        const form = document.getElementById('signup-password-form');
+        const backToSignupLink = document.getElementById('back-to-signup-link');
 
         // Form submission
         form.addEventListener('submit', function(e) {
           e.preventDefault();
-          self.handleLogin();
-        });
-
-        // Forgot password
-        forgotPasswordLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          self.handleForgotPassword();
-        });
-
-        // Signup link
-        const signupLink = document.getElementById('signup-link');
-        signupLink.addEventListener('click', function(e) {
-          e.preventDefault();
           self.handleSignup();
+        });
+
+        // Back to signup
+        backToSignupLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          self.handleBackToSignup();
+        });
+
+        // Password validation on typing
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+
+        passwordInput.addEventListener('input', function() {
+          self.clearInputError(passwordInput);
+          self.validatePasswordMatch();
+        });
+
+        confirmPasswordInput.addEventListener('input', function() {
+          self.clearInputError(confirmPasswordInput);
+          self.validatePasswordMatch();
         });
 
         // Input validation
         const inputs = document.querySelectorAll('.auth0-input');
         inputs.forEach(function(input) {
           input.addEventListener('blur', function() {
-            self.validateInput(input);
+            if (!input.readOnly) {
+              self.validateInput(input);
+            }
           });
           input.addEventListener('input', function() {
-            self.clearInputError(input);
+            if (!input.readOnly) {
+              self.clearInputError(input);
+            }
           });
         });
       }
 
-      handleLogin() {
-        const username = document.getElementById('username').value;
+      handleSignup() {
+        const email = this.email || document.getElementById('email')?.value;
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
 
         // Basic validation
-        if (!username) {
-          this.showError('Please enter your email address.');
+        if (!email) {
+          this.showError('Email is required.');
+          return;
+        }
+
+        if (!password) {
+          this.showError('Password is required.');
+          return;
+        }
+
+        if (!confirmPassword) {
+          this.showError('Please confirm your password.');
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          this.showError('Passwords do not match.');
+          return;
+        }
+
+        if (!this.isValidPassword(password)) {
+          this.showError('Password does not meet requirements.');
           return;
         }
 
         this.setLoadingState(true);
         this.clearErrors();
 
-        console.log('Login-ID screen - submitting username:', { username });
+        console.log('Signup-Password screen - submitting signup:', { email });
 
         // Use Auth0 ACUL SDK if available
-        if (this.loginIdManager && this.loginIdManager.login) {
-          console.log('Using Auth0 ACUL SDK login method');
+        if (this.signupPasswordManager && this.signupPasswordManager.signup) {
+          console.log('Using Auth0 ACUL SDK signup method');
           try {
-            this.loginIdManager.login({ username: username });
+            this.signupPasswordManager.signup({
+              email: email,
+              password: password
+            });
           } catch (error) {
-            console.error('Auth0 ACUL SDK login failed:', error);
+            console.error('Auth0 ACUL SDK signup failed:', error);
             this.setLoadingState(false);
-            this.showError('Login failed. Please try again.');
+            this.showError('Signup failed. Please try again.');
           }
         } else {
-          // Fallback to manual navigation
-          console.log('No ACUL SDK available, using navigation fallback');
-          this.navigateToPasswordScreen(username);
+          // Fallback to manual form submission
+          console.log('No ACUL SDK available, using form submission fallback');
+          this.submitSignupForm(email, password);
         }
       }
 
-      navigateToPasswordScreen(username) {
-        console.log('Navigating to password screen with username:', username);
+      submitSignupForm(email, password) {
+        console.log('Submitting signup form with email and password');
 
-        // When running on Auth0's domain, use proper form submission instead of navigation
-        if (window.location.hostname.includes('auth0.com') || window.location.hostname.includes('consumerauth.com')) {
-          console.log('Running on Auth0 domain, submitting form with identifier');
+        // Create form for signup submission
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/u/signup/password';
 
-          // Submit the identifier to Auth0's endpoint
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/u/login/identifier';
+        // Email input
+        const emailInput = document.createElement('input');
+        emailInput.type = 'hidden';
+        emailInput.name = 'email';
+        emailInput.value = email;
 
-          const usernameInput = document.createElement('input');
-          usernameInput.type = 'hidden';
-          usernameInput.name = 'username';
-          usernameInput.value = username;
+        // Password input
+        const passwordInput = document.createElement('input');
+        passwordInput.type = 'hidden';
+        passwordInput.name = 'password';
+        passwordInput.value = password;
 
-          // Add state parameter
-          const urlParams = new URLSearchParams(window.location.search);
-          const state = urlParams.get('state');
-          if (state) {
-            const stateInput = document.createElement('input');
-            stateInput.type = 'hidden';
-            stateInput.name = 'state';
-            stateInput.value = state;
-            form.appendChild(stateInput);
-          }
-
-          form.appendChild(usernameInput);
-          document.body.appendChild(form);
-          form.submit();
-        } else {
-          // Local testing fallback
-          console.log('Running locally, using navigation fallback');
-          const urlParams = new URLSearchParams(window.location.search);
-          const state = urlParams.get('state');
-
-          if (state) {
-            const passwordUrl = `${window.location.origin}/u/login/password?state=${state}&login_hint=${encodeURIComponent(username)}`;
-            console.log('Navigating to:', passwordUrl);
-            window.location.href = passwordUrl;
-          } else {
-            console.error('No state parameter found, cannot proceed');
-            this.setLoadingState(false);
-            this.showError('Unable to proceed. Please refresh and try again.');
-          }
+        // Add state parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const state = urlParams.get('state');
+        if (state) {
+          const stateInput = document.createElement('input');
+          stateInput.type = 'hidden';
+          stateInput.name = 'state';
+          stateInput.value = state;
+          form.appendChild(stateInput);
         }
+
+        form.appendChild(emailInput);
+        form.appendChild(passwordInput);
+        document.body.appendChild(form);
+        form.submit();
       }
 
-      handleForgotPassword() {
-        console.log('Forgot password clicked');
-        // Navigate to password reset screen
+      handleBackToSignup() {
+        console.log('Back to signup clicked');
+
         const urlParams = new URLSearchParams(window.location.search);
         const state = urlParams.get('state');
 
         if (state) {
-          const resetUrl = `${window.location.origin}/u/reset-password?state=${state}`;
-          window.location.href = resetUrl;
+          const signupUrl = `${window.location.origin}/u/signup?state=${state}`;
+          window.location.href = signupUrl;
         }
       }
 
-      handleSignup() {
-        console.log('Signup clicked');
+      validatePasswordMatch() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
 
-        // When running on Auth0's domain, navigate to signup-id screen
-        if (window.location.hostname.includes('auth0.com') || window.location.hostname.includes('consumerauth.com')) {
-          console.log('Running on Auth0 domain, navigating to signup-id screen');
-
-          const urlParams = new URLSearchParams(window.location.search);
-          const state = urlParams.get('state');
-
-          if (state) {
-            const signupUrl = `${window.location.origin}/u/signup?state=${state}`;
-            console.log('Navigating to signup:', signupUrl);
-            window.location.href = signupUrl;
-          } else {
-            console.error('No state parameter found for signup navigation');
-            this.showError('Unable to proceed with signup. Please refresh and try again.');
-          }
+        if (confirmPassword && password !== confirmPassword) {
+          this.showInputError(document.getElementById('confirm-password'), 'Passwords do not match.');
         } else {
-          // Local testing fallback
-          console.log('Running locally, using signup fallback');
-          const urlParams = new URLSearchParams(window.location.search);
-          const state = urlParams.get('state');
-
-          if (state) {
-            const signupUrl = `${window.location.origin}/u/signup?state=${state}`;
-            console.log('Navigating to:', signupUrl);
-            window.location.href = signupUrl;
-          } else {
-            console.error('No state parameter found for signup');
-            this.showError('Unable to proceed with signup. Please refresh and try again.');
-          }
+          this.clearInputError(document.getElementById('confirm-password'));
         }
       }
 
       validateInput(input) {
         const value = input.value.trim();
 
-        if (!value) {
+        if (!value && input.required) {
           this.showInputError(input, 'This field is required.');
           return false;
         }
 
-        if (input.type === 'email' && !this.isValidEmail(value)) {
-          this.showInputError(input, 'Please enter a valid email address.');
+        if (input.type === 'password' && !this.isValidPassword(value)) {
+          this.showInputError(input, 'Password does not meet requirements.');
           return false;
         }
 
@@ -450,9 +474,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return true;
       }
 
-      isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
+      isValidPassword(password) {
+        // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+        const hasLength = password.length >= 8;
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasLowercase = /[a-z]/.test(password);
+        const hasNumber = /\d/.test(password);
+
+        return hasLength && hasUppercase && hasLowercase && hasNumber;
       }
 
       showError(message) {
@@ -507,21 +536,21 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // Initialize the custom login screen
+    // Initialize the custom signup password screen
     try {
-      const customLogin = new ConsumerAuthLoginIdScreen();
-      customLogin.render();
-      console.log('✅ ConsumerAuth login-id screen rendered successfully');
+      const customSignupPassword = new ConsumerAuthSignupPasswordScreen();
+      customSignupPassword.render();
+      console.log('✅ ConsumerAuth signup-password screen rendered successfully');
     } catch (error) {
-      console.error('❌ Error rendering custom login screen:', error);
+      console.error('❌ Error rendering custom signup password screen:', error);
 
       // Fallback: show a simple message
-      document.body.innerHTML = '<div style="text-align: center; padding: 2rem; font-family: system-ui;"><h1>ConsumerAuth Login</h1><p>Custom login screen is loading...</p><p><a href="/api/auth/login">Continue with default login</a></p></div>';
+      document.body.innerHTML = '<div style="text-align: center; padding: 2rem; font-family: system-ui;"><h1>ConsumerAuth Signup</h1><p>Custom signup password screen is loading...</p><p><a href="/api/auth/login">Go to login</a></p></div>';
     }
   }
 
   // Start initialization
-  initializeCustomLogin();
+  initializeCustomSignupPassword();
 });
 
 // Global error handler

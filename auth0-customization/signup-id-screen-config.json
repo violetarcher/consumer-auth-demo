@@ -23,12 +23,12 @@
       "tag": "meta",
       "attributes": {
         "name": "description",
-        "content": "Secure login powered by ConsumerAuth"
+        "content": "Start your ConsumerAuth account"
       }
     },
     {
       "tag": "title",
-      "content": "Sign In | ConsumerAuth"
+      "content": "Sign Up | ConsumerAuth"
     },
     {
       "tag": "link",
@@ -68,7 +68,7 @@
     {
       "tag": "script",
       "attributes": {
-        "src": "http://localhost:4000/api/auth0-assets/login-id-screen.js",
+        "src": "http://localhost:4000/api/auth0-assets/signup-id-screen.js",
         "defer": ""
       }
     },
