@@ -68,7 +68,7 @@
     {
       "tag": "script",
       "attributes": {
-        "src": "http://localhost:4000/api/auth0-assets/signup-screen-simple.js",
+        "src": "http://localhost:4000/api/auth0-assets/signup-screen.js",
         "defer": ""
       }
     },

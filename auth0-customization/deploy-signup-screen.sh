@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Deploy signup-id screen configuration only
-# This script ONLY updates the signup-id screen, no tenant settings
+# Deploy signup screen configuration only
+# This script ONLY updates the signup screen, no tenant settings
 
 set -e
 
 TENANT="archfaktor.us.auth0.com"
 
-echo "🚀 Deploying signup-id screen configuration..."
+echo "🚀 Deploying signup screen configuration..."
 echo "Tenant: ${TENANT}"
 echo
 
@@ -17,7 +17,7 @@ if [ -z "$AUTH0_MANAGEMENT_TOKEN" ]; then
     exit 1
 fi
 
-echo "📤 Deploying signup-id screen with API routes..."
+echo "📤 Deploying signup screen with API routes..."
 
 curl --location --request PATCH "https://${TENANT}/api/v2/prompts/signup/screen/signup/rendering" \
 --header 'Content-Type: application/json' \

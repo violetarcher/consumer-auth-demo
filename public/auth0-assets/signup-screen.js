@@ -1,62 +1,15 @@
 /**
- * ConsumerAuth - Auth0 Signup-ID Screen Custom JavaScript
- * Designed for Auth0 ACUL (Advanced Customizations for Universal Login)
- * Based on Auth0 ACUL SDK implementation patterns
+ * ConsumerAuth - Auth0 Signup Screen Simple Version
+ * Basic signup form without ACUL SDK complexity
  */
 
-// Initialize custom signup screen immediately
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, initializing ConsumerAuth custom signup-id screen...');
+  console.log('DOM loaded, initializing simple ConsumerAuth signup...');
 
-  // Wait for Auth0 ACUL SDK to be available
-  function waitForAuth0SDK() {
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      const maxAttempts = 20;
+  function initializeSimpleSignup() {
+    console.log('Starting simple signup initialization...');
 
-      function checkSDK() {
-        attempts++;
-        console.log(`Attempt ${attempts}: Checking for Auth0 ACUL SDK...`);
-
-        // Check for Auth0 ACUL SDK
-        if (typeof window.Auth0ULP !== 'undefined') {
-          console.log('✅ Auth0 ACUL SDK found');
-          resolve(window.Auth0ULP);
-          return;
-        }
-
-        // Check for legacy SDK
-        if (typeof window.auth0 !== 'undefined') {
-          console.log('✅ Legacy Auth0 SDK found');
-          resolve(window.auth0);
-          return;
-        }
-
-        if (attempts >= maxAttempts) {
-          console.warn('⚠️ Auth0 SDK not found, proceeding without SDK');
-          resolve(null);
-          return;
-        }
-
-        setTimeout(checkSDK, 200);
-      }
-
-      checkSDK();
-    });
-  }
-
-  async function initializeCustomSignup() {
-    console.log('Starting custom signup-id initialization...');
-
-    // Debug: Log URL and parameters
-    console.log('Current URL:', window.location.href);
-    console.log('URL Parameters:', new URLSearchParams(window.location.search).toString());
-    console.log('Pathname:', window.location.pathname);
-
-    // Wait for Auth0 SDK
-    const auth0SDK = await waitForAuth0SDK();
-
-    // Custom branding configuration
+    // Simple branding configuration
     const brandingConfig = {
       companyName: 'ConsumerAuth',
       logoIcon: `
@@ -72,33 +25,29 @@ document.addEventListener('DOMContentLoaded', function() {
       welcomeDescription: 'Enter your email address to get started'
     };
 
-    // Auth0 ACUL SDK Integration
-    class ConsumerAuthSignupScreen {
+    // Simple signup screen class
+    class SimpleSignupScreen {
       constructor() {
-        this.auth0SDK = auth0SDK;
-        this.signupManager = null;
         this.container = null;
-
-        // Try to initialize Signup manager if SDK is available
-        if (this.auth0SDK) {
-          try {
-            // For Auth0 ACUL SDK
-            if (typeof window.Auth0ULP !== 'undefined' && window.Auth0ULP.Signup) {
-              console.log('Initializing Auth0 ACUL Signup manager...');
-              this.signupManager = new window.Auth0ULP.Signup();
-            }
-          } catch (error) {
-            console.warn('Failed to initialize Auth0 Signup manager:', error);
-          }
-        }
       }
 
       render() {
-        console.log('Rendering ConsumerAuth signup-id screen');
+        console.log('Rendering simple ConsumerAuth signup screen');
+
+        // Clear existing content
+        document.body.innerHTML = '';
 
         // Create main container
         this.container = document.createElement('div');
         this.container.className = 'auth0-login-container';
+        this.container.style.cssText = `
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 100vh;
+          background-color: #f8fafc;
+          font-family: Inter, system-ui, -apple-system, sans-serif;
+        `;
 
         // Create the signup card
         const card = this.createCard();
@@ -113,7 +62,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
       createCard() {
         const card = document.createElement('div');
-        card.className = 'auth0-card';
+        card.style.cssText = `
+          background: white;
+          border-radius: 12px;
+          padding: 2rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          width: 100%;
+          max-width: 400px;
+        `;
 
         // Create header
         const header = this.createHeader();
@@ -123,40 +79,36 @@ document.addEventListener('DOMContentLoaded', function() {
         const formContainer = this.createFormContainer();
         card.appendChild(formContainer);
 
-        // Create footer
-        const footer = this.createFooter();
-        card.appendChild(footer);
-
         return card;
       }
 
       createHeader() {
         const header = document.createElement('div');
-        header.className = 'auth0-header';
+        header.style.cssText = 'text-align: center; margin-bottom: 2rem;';
 
         // Brand section
         const brand = document.createElement('div');
-        brand.className = 'auth0-brand';
+        brand.style.cssText = 'display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1.5rem;';
 
         const brandIcon = document.createElement('div');
-        brandIcon.className = 'auth0-brand-icon';
         brandIcon.innerHTML = brandingConfig.logoIcon;
+        brandIcon.style.color = brandingConfig.primaryColor;
 
         const brandName = document.createElement('span');
-        brandName.className = 'auth0-brand-name';
         brandName.textContent = brandingConfig.companyName;
+        brandName.style.cssText = 'font-size: 1.25rem; font-weight: 600; color: #0f172a;';
 
         brand.appendChild(brandIcon);
         brand.appendChild(brandName);
 
         // Title and description
         const title = document.createElement('h1');
-        title.className = 'auth0-title';
         title.textContent = brandingConfig.welcomeTitle;
+        title.style.cssText = 'font-size: 1.5rem; font-weight: 600; color: #0f172a; margin: 0 0 0.5rem 0;';
 
         const description = document.createElement('p');
-        description.className = 'auth0-description';
         description.textContent = brandingConfig.welcomeDescription;
+        description.style.cssText = 'color: #64748b; margin: 0;';
 
         header.appendChild(brand);
         header.appendChild(title);
@@ -167,7 +119,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
       createFormContainer() {
         const container = document.createElement('div');
-        container.className = 'auth0-form-container';
 
         // Error message container
         const errorContainer = document.createElement('div');
@@ -177,66 +128,79 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Main form
         const form = document.createElement('form');
-        form.className = 'auth0-form';
         form.id = 'signup-form';
 
-        // Email field - this is the only field for signup-id screen
+        // Email field
         const emailGroup = this.createInputGroup('username', 'Email', 'email', 'Enter your email address');
         form.appendChild(emailGroup);
+
+        // Password field
+        const passwordGroup = this.createInputGroup('password', 'Password', 'password', 'Create a password');
+        form.appendChild(passwordGroup);
+
+        // Confirm password field
+        const confirmPasswordGroup = this.createInputGroup('password_confirm', 'Confirm Password', 'password', 'Confirm your password');
+        form.appendChild(confirmPasswordGroup);
 
         // Submit button
         const submitButton = document.createElement('button');
         submitButton.type = 'submit';
-        submitButton.className = 'auth0-button auth0-button-primary';
         submitButton.id = 'submit-button';
-        submitButton.innerHTML = '<span id="submit-text">Continue</span><div id="submit-spinner" class="auth0-spinner" style="display: none;"></div>';
+        submitButton.textContent = 'Continue';
+        submitButton.style.cssText = `
+          width: 100%;
+          background-color: ${brandingConfig.primaryColor};
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 0.75rem;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          margin-top: 1rem;
+        `;
         form.appendChild(submitButton);
-
-        container.appendChild(form);
 
         // Back to login link
         const backToLogin = document.createElement('div');
-        backToLogin.style.textAlign = 'center';
-        backToLogin.style.marginTop = '1.5rem';
-        backToLogin.style.paddingTop = '1.5rem';
-        backToLogin.style.borderTop = '1px solid var(--border)';
-
-        const backText = document.createElement('p');
-        backText.style.color = 'var(--muted-fg)';
-        backText.style.fontSize = '0.875rem';
-        backText.style.margin = '0 0 0.5rem 0';
-        backText.textContent = 'Already have an account?';
+        backToLogin.style.cssText = 'text-align: center; margin-top: 1rem;';
 
         const backLink = document.createElement('a');
         backLink.href = '#';
-        backLink.className = 'auth0-link';
-        backLink.textContent = 'Sign in';
-        backLink.id = 'back-to-login-link';
-        backLink.style.fontWeight = '500';
+        backLink.textContent = 'Already have an account? Sign in';
+        backLink.id = 'back-to-login';
+        backLink.style.cssText = 'color: #64748b; text-decoration: none; font-size: 0.875rem;';
 
-        backToLogin.appendChild(backText);
         backToLogin.appendChild(backLink);
-        container.appendChild(backToLogin);
+        form.appendChild(backToLogin);
 
+        container.appendChild(form);
         return container;
       }
 
       createInputGroup(id, label, type, placeholder) {
         const group = document.createElement('div');
-        group.className = 'auth0-input-group';
+        group.style.cssText = 'margin-bottom: 1rem;';
 
         const labelEl = document.createElement('label');
-        labelEl.className = 'auth0-label';
         labelEl.setAttribute('for', id);
         labelEl.textContent = label;
+        labelEl.style.cssText = 'display: block; margin-bottom: 0.5rem; font-weight: 500; color: #0f172a;';
 
         const input = document.createElement('input');
-        input.className = 'auth0-input';
         input.id = id;
         input.name = id;
         input.type = type;
         input.placeholder = placeholder;
         input.required = true;
+        input.style.cssText = `
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          font-size: 1rem;
+          box-sizing: border-box;
+        `;
 
         group.appendChild(labelEl);
         group.appendChild(input);
@@ -244,248 +208,125 @@ document.addEventListener('DOMContentLoaded', function() {
         return group;
       }
 
-      createFooter() {
-        const footer = document.createElement('div');
-        footer.className = 'auth0-footer';
-
-        const footerText = document.createElement('p');
-        footerText.className = 'auth0-footer-text';
-        footerText.innerHTML = 'Powered by Auth0 • <a href="#" class="auth0-footer-link">Privacy Policy</a> • <a href="#" class="auth0-footer-link">Terms of Service</a>';
-
-        footer.appendChild(footerText);
-        return footer;
-      }
-
       initializeEventListeners() {
-        const self = this;
         const form = document.getElementById('signup-form');
-        const backToLoginLink = document.getElementById('back-to-login-link');
+        const backToLoginLink = document.getElementById('back-to-login');
 
         // Form submission
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', (e) => {
           e.preventDefault();
-          self.handleSignup();
+          this.handleSignup();
         });
 
         // Back to login
-        backToLoginLink.addEventListener('click', function(e) {
+        backToLoginLink.addEventListener('click', (e) => {
           e.preventDefault();
-          self.handleBackToLogin();
-        });
-
-        // Input validation
-        const inputs = document.querySelectorAll('.auth0-input');
-        inputs.forEach(function(input) {
-          input.addEventListener('blur', function() {
-            self.validateInput(input);
-          });
-          input.addEventListener('input', function() {
-            self.clearInputError(input);
-          });
+          this.handleBackToLogin();
         });
       }
 
       handleSignup() {
         const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const passwordConfirm = document.getElementById('password_confirm').value;
+
+        console.log('Simple signup - submitting complete signup form');
 
         // Basic validation
-        if (!username) {
-          this.showError('Please enter your email address.');
+        if (!username || !password || !passwordConfirm) {
+          alert('Please fill in all fields.');
           return;
         }
 
-        if (!this.isValidEmail(username)) {
-          this.showError('Please enter a valid email address.');
+        if (password !== passwordConfirm) {
+          alert('Passwords do not match.');
           return;
         }
 
-        this.setLoadingState(true);
-        this.clearErrors();
-
-        console.log('Signup-ID screen - submitting username:', { username });
-
-        // Use Auth0 ACUL SDK if available
-        if (this.signupManager && this.signupManager.signup) {
-          console.log('Using Auth0 ACUL SDK signup method');
-          try {
-            this.signupManager.signup({ username: username });
-          } catch (error) {
-            console.error('Auth0 ACUL SDK signup failed:', error);
-            this.setLoadingState(false);
-            this.showError('Signup failed. Please try again.');
-          }
-        } else {
-          // Fallback to manual navigation
-          console.log('No ACUL SDK available, using navigation fallback');
-          this.navigateToSignupPasswordScreen(username);
+        if (password.length < 8) {
+          alert('Password must be at least 8 characters long.');
+          return;
         }
-      }
 
-      navigateToSignupPasswordScreen(username) {
-        console.log('Navigating to signup-password screen with username:', username);
+        // Submit complete signup form to Auth0
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/u/signup';
 
-        // When running on Auth0's domain, use proper form submission instead of navigation
-        if (window.location.hostname.includes('auth0.com') || window.location.hostname.includes('consumerauth.com')) {
-          console.log('Running on Auth0 domain, submitting form with identifier');
+        const usernameInput = document.createElement('input');
+        usernameInput.type = 'hidden';
+        usernameInput.name = 'username';
+        usernameInput.value = username;
 
-          // Submit the identifier to Auth0's signup endpoint
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/u/signup/identifier';
+        const emailInput = document.createElement('input');
+        emailInput.type = 'hidden';
+        emailInput.name = 'email';
+        emailInput.value = username;
 
-          const usernameInput = document.createElement('input');
-          usernameInput.type = 'hidden';
-          usernameInput.name = 'username';
-          usernameInput.value = username;
+        const passwordInput = document.createElement('input');
+        passwordInput.type = 'hidden';
+        passwordInput.name = 'password';
+        passwordInput.value = password;
 
-          // Add state parameter
-          const urlParams = new URLSearchParams(window.location.search);
-          const state = urlParams.get('state');
-          if (state) {
-            const stateInput = document.createElement('input');
-            stateInput.type = 'hidden';
-            stateInput.name = 'state';
-            stateInput.value = state;
-            form.appendChild(stateInput);
-          }
+        const passwordConfirmInput = document.createElement('input');
+        passwordConfirmInput.type = 'hidden';
+        passwordConfirmInput.name = 'password_confirm';
+        passwordConfirmInput.value = passwordConfirm;
 
-          form.appendChild(usernameInput);
-          document.body.appendChild(form);
-          form.submit();
-        } else {
-          // Local testing fallback - let Auth0 handle the navigation
-          console.log('Running locally, submitting to Auth0 signup endpoint');
-
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = '/u/signup/identifier';
-
-          const usernameInput = document.createElement('input');
-          usernameInput.type = 'hidden';
-          usernameInput.name = 'username';
-          usernameInput.value = username;
-
-          // Add state parameter
-          const urlParams = new URLSearchParams(window.location.search);
-          const state = urlParams.get('state');
-          if (state) {
-            const stateInput = document.createElement('input');
-            stateInput.type = 'hidden';
-            stateInput.name = 'state';
-            stateInput.value = state;
-            form.appendChild(stateInput);
-          }
-
-          form.appendChild(usernameInput);
-          document.body.appendChild(form);
-          form.submit();
+        // Add state parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const state = urlParams.get('state');
+        if (state) {
+          const stateInput = document.createElement('input');
+          stateInput.type = 'hidden';
+          stateInput.name = 'state';
+          stateInput.value = state;
+          form.appendChild(stateInput);
         }
+
+        // Add action parameter
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'default';
+        form.appendChild(actionInput);
+
+        form.appendChild(usernameInput);
+        form.appendChild(emailInput);
+        form.appendChild(passwordInput);
+        form.appendChild(passwordConfirmInput);
+
+        document.body.appendChild(form);
+        form.submit();
       }
 
       handleBackToLogin() {
-        console.log('Back to login clicked');
-
         const urlParams = new URLSearchParams(window.location.search);
         const state = urlParams.get('state');
 
         if (state) {
-          const loginUrl = `${window.location.origin}/u/login-id?state=${state}`;
+          const loginUrl = `${window.location.origin}/u/login?state=${state}`;
           window.location.href = loginUrl;
-        }
-      }
-
-      validateInput(input) {
-        const value = input.value.trim();
-
-        if (!value) {
-          this.showInputError(input, 'This field is required.');
-          return false;
-        }
-
-        if (input.type === 'email' && !this.isValidEmail(value)) {
-          this.showInputError(input, 'Please enter a valid email address.');
-          return false;
-        }
-
-        this.clearInputError(input);
-        return true;
-      }
-
-      isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-      }
-
-      showError(message) {
-        const errorContainer = document.getElementById('error-container');
-        errorContainer.innerHTML = '<div class="auth0-error">' + message + '</div>';
-        errorContainer.style.display = 'block';
-        errorContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-
-      clearErrors() {
-        const errorContainer = document.getElementById('error-container');
-        errorContainer.style.display = 'none';
-        errorContainer.innerHTML = '';
-      }
-
-      showInputError(input, message) {
-        this.clearInputError(input);
-        input.style.borderColor = 'var(--destructive)';
-
-        const errorEl = document.createElement('div');
-        errorEl.className = 'auth0-input-error';
-        errorEl.style.color = 'var(--destructive)';
-        errorEl.style.fontSize = '0.75rem';
-        errorEl.style.marginTop = '0.25rem';
-        errorEl.textContent = message;
-
-        input.parentNode.appendChild(errorEl);
-      }
-
-      clearInputError(input) {
-        input.style.borderColor = '';
-        const errorEl = input.parentNode.querySelector('.auth0-input-error');
-        if (errorEl) {
-          errorEl.remove();
-        }
-      }
-
-      setLoadingState(loading) {
-        const submitButton = document.getElementById('submit-button');
-        const submitText = document.getElementById('submit-text');
-        const submitSpinner = document.getElementById('submit-spinner');
-
-        if (loading) {
-          submitButton.disabled = true;
-          submitText.style.display = 'none';
-          submitSpinner.style.display = 'inline-block';
-        } else {
-          submitButton.disabled = false;
-          submitText.style.display = 'inline';
-          submitSpinner.style.display = 'none';
         }
       }
     }
 
-    // Initialize the custom signup screen
+    // Initialize the simple signup screen
     try {
-      const customSignup = new ConsumerAuthSignupScreen();
-      customSignup.render();
-      console.log('✅ ConsumerAuth signup screen rendered successfully');
+      const simpleSignup = new SimpleSignupScreen();
+      simpleSignup.render();
+      console.log('✅ Simple ConsumerAuth signup screen rendered successfully');
     } catch (error) {
-      console.error('❌ Error rendering custom signup screen:', error);
-
-      // Fallback: show a simple message
-      document.body.innerHTML = '<div style="text-align: center; padding: 2rem; font-family: system-ui;"><h1>ConsumerAuth Signup</h1><p>Custom signup screen is loading...</p><p><a href="/api/auth/login">Continue with default signup</a></p></div>';
+      console.error('❌ Error rendering simple signup screen:', error);
+      document.body.innerHTML = '<div style="text-align: center; padding: 2rem;"><h1>Loading...</h1></div>';
     }
   }
 
   // Start initialization
-  initializeCustomSignup();
+  initializeSimpleSignup();
 });
 
 // Global error handler
 window.addEventListener('error', function(e) {
-  console.error('Global error:', e.error);
+  console.error('Simple signup global error:', e.error);
 });
