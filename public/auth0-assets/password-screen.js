@@ -7,11 +7,52 @@
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded, initializing ConsumerAuth custom password screen...');
 
-  // Check what Auth0 objects are available
-  console.log('Available on window:', Object.keys(window).filter(key => key.toLowerCase().includes('auth')));
+  // Wait for Auth0 ACUL SDK to be available
+  function waitForAuth0SDK() {
+    return new Promise((resolve) => {
+      let attempts = 0;
+      const maxAttempts = 20;
 
-  function initializeCustomPasswordScreen() {
+      function checkSDK() {
+        attempts++;
+        console.log(`Attempt ${attempts}: Checking for Auth0 ACUL SDK...`);
+
+        // Check for Auth0 ACUL SDK
+        if (typeof window.Auth0ACUL !== 'undefined') {
+          console.log('✅ Auth0 ACUL SDK found');
+          console.log('=== GLOBAL ACUL SDK DISCOVERY ===');
+          console.log('window.Auth0ACUL object:', window.Auth0ACUL);
+          console.log('Available screen constructors:');
+
+          for (const prop in window.Auth0ACUL) {
+            const value = window.Auth0ACUL[prop];
+            const type = typeof value;
+            console.log(`  ${prop}: ${type}`, type === 'function' ? '(constructor)' : '(property)');
+          }
+
+          console.log('=== END GLOBAL SDK DISCOVERY ===');
+          resolve(window.Auth0ACUL);
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          console.warn('⚠️ Auth0 SDK not found, proceeding without SDK');
+          resolve(null);
+          return;
+        }
+
+        setTimeout(checkSDK, 200);
+      }
+
+      checkSDK();
+    });
+  }
+
+  async function initializeCustomPasswordScreen() {
     console.log('Starting custom password screen initialization...');
+
+    // Wait for Auth0 SDK
+    const auth0SDK = await waitForAuth0SDK();
 
   // Custom branding configuration
   const brandingConfig = {
@@ -29,10 +70,53 @@ document.addEventListener('DOMContentLoaded', function() {
     welcomeDescription: 'Please enter your password to continue'
   };
 
-  // Custom UI components for password screen
-    function CustomPasswordScreen(screenApi) {
-      this.screenApi = screenApi;
+  // Custom UI components for password screen with SDK integration
+    function CustomPasswordScreen(auth0SDK) {
+      this.auth0SDK = auth0SDK;
+      this.passwordManager = null;
       this.container = null;
+
+      // Try to initialize Password manager if SDK is available
+      if (this.auth0SDK) {
+        try {
+          // For Auth0 ACUL SDK
+          if (typeof window.Auth0ACUL !== 'undefined' && window.Auth0ACUL.LoginPassword) {
+            console.log('Initializing Auth0 ACUL Password manager...');
+            this.passwordManager = new window.Auth0ACUL.LoginPassword();
+
+            // SDK Method Discovery
+            console.log('=== ACUL PASSWORD SDK METHOD DISCOVERY ===');
+            console.log('Password manager instance:', this.passwordManager);
+            console.log('Available methods and properties:');
+
+            for (const prop in this.passwordManager) {
+              const value = this.passwordManager[prop];
+              const type = typeof value;
+              console.log(`  ${prop}: ${type}`, type === 'function' ? '(method)' : '(property)');
+
+              if (type === 'function') {
+                try {
+                  console.log(`    Function signature: ${value.toString().split('{')[0]}}`);
+                } catch (e) {
+                  console.log(`    Function signature: [unavailable]`);
+                }
+              }
+            }
+
+            // Check for expected methods
+            const expectedMethods = ['authenticate', 'login', 'submitPassword', 'submit', 'submitData'];
+            console.log('Checking for expected methods:');
+            expectedMethods.forEach(method => {
+              const exists = typeof this.passwordManager[method] === 'function';
+              console.log(`  ${method}: ${exists ? '✅ Available' : '❌ Not found'}`);
+            });
+
+            console.log('=== END PASSWORD SDK DISCOVERY ===');
+          }
+        } catch (error) {
+          console.warn('Failed to initialize Auth0 Password manager:', error);
+        }
+      }
     }
 
     CustomPasswordScreen.prototype.render = function() {
@@ -678,8 +762,85 @@ document.addEventListener('DOMContentLoaded', function() {
 
       console.log('Password screen - submitting password');
 
-      // Submit the password to Auth0
+      // Progressive SDK Enhancement: Try SDK methods first
+      if (this.passwordManager) {
+        this.tryPasswordSDKMethods(password);
+      } else {
+        // Fallback to manual submission
+        console.log('No ACUL SDK available, using form submission fallback');
+        this.submitPasswordToAuth0(password);
+      }
+    };
+
+    CustomPasswordScreen.prototype.tryPasswordSDKMethods = function(password) {
+      const methods = ['authenticate', 'login', 'submitPassword', 'submit', 'submitData'];
+
+      console.log('=== ATTEMPTING PASSWORD SDK METHODS ===');
+
+      // Get username from URL params if available
+      const urlParams = new URLSearchParams(window.location.search);
+      const username = urlParams.get('login_hint') || urlParams.get('email') || '';
+
+      for (const method of methods) {
+        if (typeof this.passwordManager[method] === 'function') {
+          console.log(`Attempting SDK method: ${method}`);
+          try {
+            // Try different parameter formats
+            const attempts = [
+              { password: password, username: username },
+              { password: password },
+              password,
+              { password: password, email: username },
+              { password: password, identifier: username }
+            ];
+
+            for (const params of attempts) {
+              try {
+                console.log(`  Trying with params:`, params);
+                const result = this.passwordManager[method](params);
+                console.log(`  Result:`, result);
+
+                // If successful, setup event listeners
+                console.log(`✅ SDK method ${method} succeeded`);
+                this.setupPasswordSDKEventListeners();
+                return;
+              } catch (innerError) {
+                console.log(`  Failed with params:`, innerError.message);
+              }
+            }
+          } catch (error) {
+            console.log(`❌ SDK method ${method} failed:`, error.message);
+          }
+        }
+      }
+
+      console.log('=== ALL SDK METHODS FAILED ===');
+      console.log('Falling back to form submission');
       this.submitPasswordToAuth0(password);
+    };
+
+    CustomPasswordScreen.prototype.setupPasswordSDKEventListeners = function() {
+      console.log('Setting up password SDK event listeners');
+
+      if (this.passwordManager && typeof this.passwordManager.on === 'function') {
+        const events = ['success', 'error', 'redirect', 'authenticated', 'stateChange'];
+
+        events.forEach(event => {
+          try {
+            this.passwordManager.on(event, (data) => {
+              console.log(`Password SDK Event: ${event}`, data);
+
+              if (event === 'error') {
+                this.setLoadingState(false);
+                this.showError(data.message || 'Authentication failed. Please try again.');
+              }
+            });
+            console.log(`✅ Listener registered for: ${event}`);
+          } catch (error) {
+            console.log(`❌ Could not register listener for: ${event}`);
+          }
+        });
+      }
     };
 
     CustomPasswordScreen.prototype.submitPasswordToAuth0 = function(password) {
@@ -822,15 +983,15 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     };
 
-    // Initialize the custom password screen
+    // Initialize the custom password screen with SDK
     console.log('Setting up custom password screen');
 
     try {
-      const customPasswordScreen = new CustomPasswordScreen({});
+      const customPasswordScreen = new CustomPasswordScreen(auth0SDK);
       customPasswordScreen.render();
-      console.log('Custom password screen rendered successfully');
+      console.log('✅ Custom password screen rendered successfully');
     } catch (error) {
-      console.error('Error rendering custom password screen:', error);
+      console.error('❌ Error rendering custom password screen:', error);
 
       // Fallback: show a simple message
       document.body.innerHTML = '<div style="text-align: center; padding: 2rem; font-family: system-ui;"><h1>ConsumerAuth Password</h1><p>Custom password screen is loading...</p><p><a href="/api/auth/login">Continue with default login</a></p></div>';

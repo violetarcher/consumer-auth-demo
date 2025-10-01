@@ -1,0 +1,2 @@
+import{BaseContext as t}from"../../models/base-context.js";import{FormHandler as e}from"../../utils/form-handler.js";class a extends t{constructor(){super()}async selectOrganization(t){const s={state:this.transaction.state,telemetry:[a.screenIdentifier,"selectOrganization"]};await new e(s).submitData(t)}async skipOrganizationSelection(t){const s={state:this.transaction.state,telemetry:[a.screenIdentifier,"skipOrganizationSelection"]};await new e(s).submitData({...t,organizationSkipped:!0,state:this.transaction.state})}}export{a as default};
+//# sourceMappingURL=index.js.map

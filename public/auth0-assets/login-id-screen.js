@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Wait for Auth0 ACUL SDK to be available
   function waitForAuth0SDK() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       let attempts = 0;
       const maxAttempts = 20;
 
@@ -18,22 +18,29 @@ document.addEventListener('DOMContentLoaded', function() {
         attempts++;
         console.log(`Attempt ${attempts}: Checking for Auth0 ACUL SDK...`);
 
-        // Check for Auth0 ACUL SDK
-        if (typeof window.Auth0ULP !== 'undefined') {
+        // Check for Auth0 ACUL SDK (we load it as window.Auth0ACUL)
+        if (typeof window.Auth0ACUL !== 'undefined') {
           console.log('✅ Auth0 ACUL SDK found');
-          resolve(window.Auth0ULP);
-          return;
-        }
 
-        // Check for legacy SDK
-        if (typeof window.auth0 !== 'undefined') {
-          console.log('✅ Legacy Auth0 SDK found');
-          resolve(window.auth0);
+          // Global SDK Discovery
+          console.log('=== ACUL SDK DISCOVERY ===');
+          console.log('window.Auth0ACUL object:', window.Auth0ACUL);
+          console.log('Available screens:');
+
+          for (const prop in window.Auth0ACUL) {
+            const value = window.Auth0ACUL[prop];
+            const type = typeof value;
+            console.log(`  ${prop}: ${type}`, type === 'function' ? '(constructor)' : '(property)');
+          }
+
+          console.log('=== END SDK DISCOVERY ===');
+
+          resolve(window.Auth0ACUL);
           return;
         }
 
         if (attempts >= maxAttempts) {
-          console.warn('⚠️ Auth0 SDK not found, proceeding without SDK');
+          console.warn('⚠️ Auth0 SDK not found after 20 attempts, proceeding without SDK');
           resolve(null);
           return;
         }
@@ -72,24 +79,30 @@ document.addEventListener('DOMContentLoaded', function() {
       welcomeDescription: 'Enter your email address to continue'
     };
 
-    // Auth0 ACUL SDK Integration
+    // ConsumerAuth Login ID Screen
     class ConsumerAuthLoginIdScreen {
-      constructor() {
+      constructor(auth0SDK) {
         this.auth0SDK = auth0SDK;
         this.loginIdManager = null;
         this.container = null;
 
-        // Try to initialize Login ID manager if SDK is available
-        if (this.auth0SDK) {
-          try {
-            // For Auth0 ACUL SDK
-            if (typeof window.Auth0ULP !== 'undefined' && window.Auth0ULP.LoginId) {
-              console.log('Initializing Auth0 ACUL LoginId manager...');
-              this.loginIdManager = new window.Auth0ULP.LoginId();
-            }
-          } catch (error) {
-            console.warn('Failed to initialize Auth0 LoginId manager:', error);
+        // Initialize LoginId manager if SDK is available
+        if (this.auth0SDK && this.auth0SDK.LoginId) {
+          console.log('Initializing Auth0 ACUL LoginId manager...');
+          this.loginIdManager = new this.auth0SDK.LoginId();
+
+          // SDK Method Discovery
+          console.log('=== LOGINID MANAGER DISCOVERY ===');
+          console.log('LoginId manager instance:', this.loginIdManager);
+          console.log('Available methods and properties:');
+
+          for (const prop in this.loginIdManager) {
+            const value = this.loginIdManager[prop];
+            const type = typeof value;
+            console.log(`  ${prop}: ${type}`);
           }
+
+          console.log('=== END MANAGER DISCOVERY ===');
         }
       }
 
@@ -468,19 +481,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log('Login-ID screen - submitting username:', { username });
 
-        // Use Auth0 ACUL SDK if available
-        if (this.loginIdManager && this.loginIdManager.login) {
+        // Use SDK if available
+        if (this.loginIdManager) {
           console.log('Using Auth0 ACUL SDK login method');
           try {
             this.loginIdManager.login({ username: username });
+            console.log('✅ SDK login method called successfully');
           } catch (error) {
-            console.error('Auth0 ACUL SDK login failed:', error);
+            console.error('SDK login failed:', error);
             this.setLoadingState(false);
             this.showError('Login failed. Please try again.');
           }
         } else {
           // Fallback to manual navigation
-          console.log('No ACUL SDK available, using navigation fallback');
+          console.log('No SDK available, using fallback navigation');
           this.navigateToPasswordScreen(username);
         }
       }
@@ -848,7 +862,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize the custom login screen
     try {
-      const customLogin = new ConsumerAuthLoginIdScreen();
+      const customLogin = new ConsumerAuthLoginIdScreen(auth0SDK);
       customLogin.render();
       console.log('✅ ConsumerAuth login-id screen rendered successfully');
     } catch (error) {

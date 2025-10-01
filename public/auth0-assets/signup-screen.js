@@ -4,10 +4,54 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, initializing simple ConsumerAuth signup...');
+  console.log('DOM loaded, initializing ConsumerAuth signup...');
 
-  function initializeSimpleSignup() {
-    console.log('Starting simple signup initialization...');
+  // Wait for Auth0 ACUL SDK to be available
+  function waitForAuth0SDK() {
+    return new Promise((resolve) => {
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      function checkSDK() {
+        attempts++;
+        console.log(`Attempt ${attempts}: Checking for Auth0 ACUL SDK...`);
+
+        // Check for Auth0 ACUL SDK
+        if (typeof window.Auth0ACUL !== 'undefined') {
+          console.log('✅ Auth0 ACUL SDK found');
+          console.log('=== GLOBAL ACUL SDK DISCOVERY ===');
+          console.log('window.Auth0ACUL object:', window.Auth0ACUL);
+          console.log('Available screen constructors:');
+
+          for (const prop in window.Auth0ACUL) {
+            const value = window.Auth0ACUL[prop];
+            const type = typeof value;
+            console.log(`  ${prop}: ${type}`, type === 'function' ? '(constructor)' : '(property)');
+          }
+
+          console.log('=== END GLOBAL SDK DISCOVERY ===');
+          resolve(window.Auth0ACUL);
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          console.warn('⚠️ Auth0 SDK not found, proceeding without SDK');
+          resolve(null);
+          return;
+        }
+
+        setTimeout(checkSDK, 200);
+      }
+
+      checkSDK();
+    });
+  }
+
+  async function initializeSignup() {
+    console.log('Starting signup initialization...');
+
+    // Wait for Auth0 SDK
+    const auth0SDK = await waitForAuth0SDK();
 
     // Simple branding configuration
     const brandingConfig = {
@@ -25,10 +69,54 @@ document.addEventListener('DOMContentLoaded', function() {
       welcomeDescription: 'Enter your email address to get started'
     };
 
-    // Simple signup screen class
-    class SimpleSignupScreen {
-      constructor() {
+    // Signup screen class with ACUL SDK integration
+    class SignupScreen {
+      constructor(auth0SDK) {
+        this.auth0SDK = auth0SDK;
+        this.signupManager = null;
         this.container = null;
+
+        // Try to initialize Signup manager if SDK is available
+        if (this.auth0SDK) {
+          try {
+            // For Auth0 ACUL SDK
+            if (typeof window.Auth0ACUL !== 'undefined' && window.Auth0ACUL.Signup) {
+              console.log('Initializing Auth0 ACUL Signup manager...');
+              this.signupManager = new window.Auth0ACUL.Signup();
+
+              // SDK Method Discovery
+              console.log('=== ACUL SIGNUP SDK METHOD DISCOVERY ===');
+              console.log('Signup manager instance:', this.signupManager);
+              console.log('Available methods and properties:');
+
+              for (const prop in this.signupManager) {
+                const value = this.signupManager[prop];
+                const type = typeof value;
+                console.log(`  ${prop}: ${type}`, type === 'function' ? '(method)' : '(property)');
+
+                if (type === 'function') {
+                  try {
+                    console.log(`    Function signature: ${value.toString().split('{')[0]}}`);
+                  } catch (e) {
+                    console.log(`    Function signature: [unavailable]`);
+                  }
+                }
+              }
+
+              // Check for expected methods
+              const expectedMethods = ['signup', 'register', 'submitData', 'create', 'submit'];
+              console.log('Checking for expected methods:');
+              expectedMethods.forEach(method => {
+                const exists = typeof this.signupManager[method] === 'function';
+                console.log(`  ${method}: ${exists ? '✅ Available' : '❌ Not found'}`);
+              });
+
+              console.log('=== END SIGNUP SDK DISCOVERY ===');
+            }
+          } catch (error) {
+            console.warn('Failed to initialize Auth0 Signup manager:', error);
+          }
+        }
       }
 
       render() {
@@ -366,24 +454,103 @@ document.addEventListener('DOMContentLoaded', function() {
         const password = document.getElementById('password').value;
         const passwordConfirm = document.getElementById('password_confirm').value;
 
-        console.log('Simple signup - submitting complete signup form');
+        console.log('Signup - submitting signup form');
 
         // Basic validation
         if (!username || !password || !passwordConfirm) {
-          alert('Please fill in all fields.');
+          this.showError('Please fill in all fields.');
           return;
         }
 
         if (password !== passwordConfirm) {
-          alert('Passwords do not match.');
+          this.showError('Passwords do not match.');
           return;
         }
 
         if (password.length < 8) {
-          alert('Password must be at least 8 characters long.');
+          this.showError('Password must be at least 8 characters long.');
           return;
         }
 
+        this.setLoadingState(true);
+
+        // Progressive SDK Enhancement: Try SDK methods first
+        if (this.signupManager) {
+          this.trySignupSDKMethods(username, password, passwordConfirm);
+        } else {
+          // Fallback to manual form submission
+          console.log('No ACUL SDK available, using form submission fallback');
+          this.submitSignupForm(username, password, passwordConfirm);
+        }
+      }
+
+      trySignupSDKMethods(username, password, passwordConfirm) {
+        const methods = ['signup', 'register', 'submitData', 'create', 'submit'];
+
+        console.log('=== ATTEMPTING SIGNUP SDK METHODS ===');
+
+        for (const method of methods) {
+          if (typeof this.signupManager[method] === 'function') {
+            console.log(`Attempting SDK method: ${method}`);
+            try {
+              // Try different parameter formats
+              const attempts = [
+                { email: username, password: password, password_confirm: passwordConfirm },
+                { username: username, password: password },
+                { email: username, password: password },
+                { identifier: username, password: password }
+              ];
+
+              for (const params of attempts) {
+                try {
+                  console.log(`  Trying with params:`, params);
+                  const result = this.signupManager[method](params);
+                  console.log(`  Result:`, result);
+
+                  // If successful, setup event listeners
+                  console.log(`✅ SDK method ${method} succeeded`);
+                  this.setupSignupSDKEventListeners();
+                  return;
+                } catch (innerError) {
+                  console.log(`  Failed with params:`, innerError.message);
+                }
+              }
+            } catch (error) {
+              console.log(`❌ SDK method ${method} failed:`, error.message);
+            }
+          }
+        }
+
+        console.log('=== ALL SDK METHODS FAILED ===');
+        console.log('Falling back to form submission');
+        this.submitSignupForm(username, password, passwordConfirm);
+      }
+
+      setupSignupSDKEventListeners() {
+        console.log('Setting up signup SDK event listeners');
+
+        if (this.signupManager && typeof this.signupManager.on === 'function') {
+          const events = ['success', 'error', 'redirect', 'stateChange'];
+
+          events.forEach(event => {
+            try {
+              this.signupManager.on(event, (data) => {
+                console.log(`Signup SDK Event: ${event}`, data);
+
+                if (event === 'error') {
+                  this.setLoadingState(false);
+                  this.showError(data.message || 'Signup failed. Please try again.');
+                }
+              });
+              console.log(`✅ Listener registered for: ${event}`);
+            } catch (error) {
+              console.log(`❌ Could not register listener for: ${event}`);
+            }
+          });
+        }
+      }
+
+      submitSignupForm(username, password, passwordConfirm) {
         // Submit complete signup form to Auth0
         const form = document.createElement('form');
         form.method = 'POST';
@@ -686,21 +853,53 @@ document.addEventListener('DOMContentLoaded', function() {
           this.container.style.transform = 'scale(1)';
         }, 100);
       }
+
+      showError(message) {
+        const errorContainer = document.getElementById('error-container');
+        if (errorContainer) {
+          errorContainer.innerHTML = '<div style="color: #dc2626; padding: 1rem; background: rgba(220, 38, 38, 0.1); border-radius: 8px; margin-bottom: 1rem;">' + message + '</div>';
+          errorContainer.style.display = 'block';
+          errorContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+          alert(message);
+        }
+      }
+
+      clearErrors() {
+        const errorContainer = document.getElementById('error-container');
+        if (errorContainer) {
+          errorContainer.style.display = 'none';
+          errorContainer.innerHTML = '';
+        }
+      }
+
+      setLoadingState(loading) {
+        const submitButton = document.getElementById('submit-button');
+        if (submitButton) {
+          if (loading) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '⏳ Creating Account...';
+          } else {
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Create Account';
+          }
+        }
+      }
     }
 
-    // Initialize the simple signup screen
+    // Initialize the signup screen with SDK
     try {
-      const simpleSignup = new SimpleSignupScreen();
-      simpleSignup.render();
-      console.log('✅ Simple ConsumerAuth signup screen rendered successfully');
+      const signup = new SignupScreen(auth0SDK);
+      signup.render();
+      console.log('✅ ConsumerAuth signup screen rendered successfully');
     } catch (error) {
-      console.error('❌ Error rendering simple signup screen:', error);
+      console.error('❌ Error rendering signup screen:', error);
       document.body.innerHTML = '<div style="text-align: center; padding: 2rem;"><h1>Loading...</h1></div>';
     }
   }
 
   // Start initialization
-  initializeSimpleSignup();
+  initializeSignup();
 });
 
 // Global error handler
