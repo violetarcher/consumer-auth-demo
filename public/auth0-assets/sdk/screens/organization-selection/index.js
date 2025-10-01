@@ -1,2 +1,0 @@
-import{FormActions as t}from"../../constants/form-actions.js";import{BaseContext as e}from"../../models/base-context.js";import{FormHandler as s}from"../../utils/form-handler.js";class n extends e{screen;constructor(){super();const t=this.getContext("screen");this.screen=t}async continueWithOrganizationName(e){const o={state:this.transaction.state,telemetry:[n.screenIdentifier,"continueWithOrganizationName"]};await new s(o).submitData({...e,action:t.DEFAULT})}}export{n as default};
-//# sourceMappingURL=index.js.map

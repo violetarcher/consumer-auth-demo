@@ -1,2 +1,0 @@
-import{Screen as e}from"../../models/screen.js";import{getPublicKey as t,getWebAuthnType as s,getShowRememberDevice as c}from"../../shared/screen.js";class i extends e{showRememberDevice;webauthnType;publicKey;constructor(e){super(e),this.publicKey=i.getPublicKey(e),this.webauthnType=i.getWebAuthnType(e),this.showRememberDevice=i.getShowRememberDevice(e)}static getPublicKey=e=>t(e);static getWebAuthnType=e=>s(e);static getShowRememberDevice=e=>c(e)}export{i as ScreenOverride};
-//# sourceMappingURL=screen-override.js.map

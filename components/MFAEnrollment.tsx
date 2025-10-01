@@ -14,9 +14,12 @@ import { Shield, Smartphone, Key, QrCode, Check, X, Mail, AlertTriangle, Fingerp
 interface MFAEnrollment {
   id: string;
   status: 'confirmed' | 'pending';
-  type: 'sms' | 'push-notification' | 'otp';
+  type: 'sms' | 'phone' | 'push-notification' | 'otp' | 'webauthn-roaming' | 'webauthn-platform';
+  auth_method?: string;
   name?: string;
   phone_number?: string;
+  identifier?: string;
+  enrolled_at?: string;
 }
 
 interface MFAFactor {
@@ -101,18 +104,38 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
       const response = await fetch('/api/mfa');
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched enrollments:', data.enrollments);
         setEnrollments(data.enrollments || []);
-        
+
         // Update factors based on actual enrollments
         const hasAnyEnrollments = data.enrollments && data.enrollments.length > 0;
         
-        setFactors(prevFactors => 
+        setFactors(prevFactors =>
           prevFactors.map(factor => {
-            const enrollment = data.enrollments?.find((e: MFAEnrollment) => 
-              (e.type === 'sms' && factor.type === 'sms') ||
-              (e.type === 'otp' && factor.type === 'totp')
-            );
-            
+            const enrollment = data.enrollments?.find((e: MFAEnrollment) => {
+              // Match SMS/Phone enrollments
+              if ((e.type === 'sms' || e.type === 'phone') && factor.type === 'sms') {
+                return true;
+              }
+              // Match Guardian push-notification enrollments (TOTP in Guardian app)
+              if (e.type === 'push-notification' && factor.type === 'totp') {
+                return true;
+              }
+              // Match OTP enrollments (Authenticator app TOTP)
+              if (e.type === 'otp' && factor.type === 'totp-otp') {
+                return true;
+              }
+              // Match WebAuthn enrollments
+              if ((e.type === 'webauthn-roaming' || e.type === 'webauthn-platform') && factor.type === 'webauthn') {
+                return true;
+              }
+              // Match push notification enrollments
+              if (e.type === 'push-notification' && factor.type === 'push') {
+                return true;
+              }
+              return false;
+            });
+
             // Always show Reset MFA option
             if (factor.type === 'reset-mfa') {
               return {
@@ -121,7 +144,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                 verified: false
               };
             }
-            
+
             return {
               ...factor,
               enabled: !!enrollment && enrollment.status === 'confirmed',
@@ -195,8 +218,8 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
           });
         }
       } else if (factorType === 'webauthn') {
-        // Create WebAuthn enrollment ticket
-        const response = await fetch('/api/webauthn-enrollment', {
+        // Create MFA enrollment ticket
+        const response = await fetch('/api/mfa-any-enrollment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ step: 'initiate' })
@@ -532,11 +555,68 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
     }
   };
 
+  const handleRemoveEnrollment = async (enrollmentId: string) => {
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/mfa?id=${enrollmentId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast({
+          title: "MFA enrollment removed",
+          description: "The MFA enrollment has been removed successfully.",
+        });
+
+        // Refresh enrollments
+        await fetchEnrollments();
+
+        // Reload page to update user state
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Failed to remove enrollment",
+          description: error.error || "Could not remove MFA enrollment",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Network error",
+        description: "Failed to connect to server. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDisableFactor = async (factorType: string) => {
-    const enrollment = enrollments.find(e => 
-      (e.type === 'sms' && factorType === 'sms') ||
-      (e.type === 'otp' && factorType === 'totp')
-    );
+    const enrollment = enrollments.find(e => {
+      // Match SMS/Phone enrollments
+      if ((e.type === 'sms' || e.type === 'phone') && factorType === 'sms') {
+        return true;
+      }
+      // Match Guardian push-notification enrollments
+      if (e.type === 'push-notification' && factorType === 'totp') {
+        return true;
+      }
+      // Match OTP enrollments
+      if (e.type === 'otp' && factorType === 'totp-otp') {
+        return true;
+      }
+      // Match WebAuthn enrollments
+      if ((e.type === 'webauthn-roaming' || e.type === 'webauthn-platform') && factorType === 'webauthn') {
+        return true;
+      }
+      // Match push notification enrollments
+      if (e.type === 'push-notification' && factorType === 'push') {
+        return true;
+      }
+      return false;
+    });
 
     if (!enrollment) {
       toast({
@@ -701,8 +781,8 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                         </p>
                       </div>
                     </div>
-                    <Button 
-                      variant="destructive" 
+                    <Button
+                      variant="destructive"
                       size="sm"
                       onClick={handleResetMfa}
                       disabled={resetMfaLoading}
@@ -715,6 +795,52 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
             )}
 
             <Separator />
+
+            {/* Current MFA Enrollments Section */}
+            {enrollments.length > 0 && (
+              <>
+                <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+                  <h4 className="font-medium text-green-900 mb-3">Active MFA Enrollments</h4>
+                  <div className="space-y-2">
+                    {enrollments.map((enrollment: MFAEnrollment) => (
+                      <div key={enrollment.id} className="flex items-center justify-between p-3 bg-white rounded border border-green-100">
+                        <div className="flex items-center gap-3">
+                          {enrollment.type === 'sms' || enrollment.type === 'phone' ? (
+                            <Smartphone className="w-4 h-4 text-green-600" />
+                          ) : enrollment.type === 'push-notification' ? (
+                            <Shield className="w-4 h-4 text-green-600" />
+                          ) : enrollment.type === 'otp' ? (
+                            <Key className="w-4 h-4 text-green-600" />
+                          ) : enrollment.type === 'webauthn-roaming' || enrollment.type === 'webauthn-platform' ? (
+                            <Fingerprint className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Shield className="w-4 h-4 text-green-600" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">
+                              {enrollment.auth_method || enrollment.type}
+                            </p>
+                            {enrollment.name && (
+                              <p className="text-xs text-muted-foreground">{enrollment.name}</p>
+                            )}
+                            {enrollment.phone_number && (
+                              <p className="text-xs text-muted-foreground">{enrollment.phone_number}</p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge
+                          variant={enrollment.status === 'confirmed' ? 'default' : 'secondary'}
+                          className={enrollment.status === 'confirmed' ? 'bg-green-600' : ''}
+                        >
+                          {enrollment.status === 'confirmed' ? 'Active' : 'Pending'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
 
             {/* Legacy Phone Verification Completion Section - Remove this block if new section above works */}
             {false && user?.phone_number && !user?.phone_verified && (
@@ -744,11 +870,7 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
             <div className="space-y-4">
             {factors
               .filter(factor => {
-                // Hide SMS factor if user's phone is already verified
-                if (factor.type === 'sms' && user?.phone_verified) {
-                  return false;
-                }
-                // Always show all factors including Reset MFA
+                // Always show all factors including SMS and Reset MFA
                 return true;
               })
               .map((factor) => (

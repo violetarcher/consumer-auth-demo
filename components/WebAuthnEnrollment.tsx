@@ -21,10 +21,10 @@ export function WebAuthnEnrollment({ user }: WebAuthnEnrollmentProps = {}) {
     try {
       // Create MFA enrollment ticket
       console.log('Creating WebAuthn enrollment ticket...');
-      const response = await fetch('/api/webauthn-enrollment', {
+      const response = await fetch('/api/mfa-any-enrollment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           step: 'initiate'
         })
       });

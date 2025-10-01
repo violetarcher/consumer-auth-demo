@@ -3,27 +3,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ManagementClient } from 'auth0';
 
 export async function POST(request: NextRequest) {
+  console.log('=== MFA Enrollment Complete API called ===');
+
   try {
     const session = await getSession();
-    
+
     if (!session || !session.user) {
+      console.error('No session found');
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
+
+    console.log('User authenticated:', session.user.sub);
 
     const body = await request.json();
     const { enrollmentId } = body;
 
+    console.log('Request body:', body);
+
     if (!enrollmentId) {
+      console.error('No enrollmentId provided');
       return NextResponse.json({ error: 'Enrollment ID required' }, { status: 400 });
     }
 
     // Check if we have M2M credentials
     if (!process.env.AUTH0_M2M_CLIENT_ID || !process.env.AUTH0_M2M_CLIENT_SECRET) {
+      console.error('Missing M2M credentials');
       return NextResponse.json({
         success: false,
         error: 'MFA verification not available in demo mode'
       }, { status: 500 });
     }
+
+    console.log('M2M credentials present, initializing Management API client');
 
     try {
       // Initialize Auth0 Management API client
@@ -33,8 +44,12 @@ export async function POST(request: NextRequest) {
         clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
       });
 
+      console.log('Getting user data for:', session.user.sub);
+
       // Get current user data
       const currentUser = await management.users.get({ id: session.user.sub! });
+
+      console.log('User data retrieved, phone_number:', currentUser.data.phone_number);
       const existingMetadata = currentUser.data.user_metadata || {};
       
       // Get phone number from user profile (set by Auth0 during enrollment)
@@ -61,30 +76,40 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Use Auth0 Guardian API to verify actual MFA enrollments
-      console.log('Checking Guardian MFA enrollments for user:', session.user.sub);
-      
-      // Get M2M token for Guardian API access
-      const guardianTokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
+      // Use Auth0 Management API to verify actual MFA enrollments
+      console.log('Checking MFA enrollments for user:', session.user.sub);
+
+      // Get M2M token for Management API access
+      const domain = process.env.AUTH0_MANAGEMENT_DOMAIN!;
+      const enrollmentTokenResponse = await fetch(`https://${domain}/oauth/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: process.env.AUTH0_M2M_CLIENT_ID,
           client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
-          audience: `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/`,
+          audience: `https://${domain}/api/v2/`,
           grant_type: 'client_credentials'
         })
       });
-      
-      const guardianTokenData = await guardianTokenResponse.json();
-      const guardianAccessToken = guardianTokenData.access_token;
-      
-      // Query Guardian API for user's MFA enrollments
-      const domain = process.env.AUTH0_MANAGEMENT_DOMAIN!;
+
+      const enrollmentTokenData = await enrollmentTokenResponse.json();
+
+      if (!enrollmentTokenData.access_token) {
+        console.error('Failed to get enrollment access token:', enrollmentTokenData);
+        return NextResponse.json({
+          success: false,
+          error: 'Unable to verify MFA enrollment status.',
+          details: 'Failed to authenticate with Management API.'
+        }, { status: 500 });
+      }
+
+      const enrollmentAccessToken = enrollmentTokenData.access_token;
+
+      // Query Management API for user's MFA enrollments
       const enrollmentsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/enrollments`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${guardianAccessToken}`,
+          'Authorization': `Bearer ${enrollmentAccessToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -107,9 +132,9 @@ export async function POST(request: NextRequest) {
         status: string;
         type: string;
         phone_number?: string;
-      }) => 
-        enrollment.status === 'confirmed' && 
-        (enrollment.type === 'sms' || enrollment.type === 'otp')
+      }) =>
+        enrollment.status === 'confirmed' &&
+        (enrollment.type === 'sms' || enrollment.type === 'phone')
       );
       
       if (activeSMSEnrollments.length === 0) {
@@ -135,20 +160,8 @@ export async function POST(request: NextRequest) {
       console.log('Security checks passed for SMS enrollment completion:', userPhone);
 
       // Now that enrollment is complete, set phone as verified
-      // Get M2M token for Auth0 Management API
-      const tokenResponse = await fetch(`${process.env.AUTH0_ISSUER_BASE_URL}/oauth/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.AUTH0_M2M_CLIENT_ID,
-          client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
-          audience: `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/`,
-          grant_type: 'client_credentials'
-        })
-      });
-      
-      const tokenData = await tokenResponse.json();
-      const accessToken = tokenData.access_token;
+      // Reuse the same access token from enrollment check since it's already authenticated for Management API
+      const accessToken = enrollmentAccessToken;
       
       // Set phone number and mark as verified
       const response = await fetch(`https://${domain}/api/v2/users/${session.user.sub}`, {

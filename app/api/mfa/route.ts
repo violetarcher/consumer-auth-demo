@@ -21,17 +21,51 @@ export async function GET() {
     }
 
     try {
-      // Initialize Auth0 Management API client
-      const management = new ManagementClient({
-        domain: process.env.AUTH0_MANAGEMENT_DOMAIN!,
-        clientId: process.env.AUTH0_M2M_CLIENT_ID!,
-        clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
+      // Get Management API access token
+      const domain = process.env.AUTH0_MANAGEMENT_DOMAIN!;
+      const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.AUTH0_M2M_CLIENT_ID,
+          client_secret: process.env.AUTH0_M2M_CLIENT_SECRET,
+          audience: `https://${domain}/api/v2/`,
+          grant_type: 'client_credentials'
+        })
       });
 
-      // For now, return empty array as Guardian enrollment reading is complex
-      // In production, you'd fetch actual enrollments from Auth0 Guardian
-      const enrollments: any[] = [];
-      console.log('Would fetch Guardian enrollments for user:', session.user.sub);
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Failed to get Management API token:', tokenResponse.status, errorText);
+        return NextResponse.json({
+          success: true,
+          enrollments: []
+        });
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+
+      // Fetch Guardian enrollments
+      const enrollmentsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/enrollments`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!enrollmentsResponse.ok) {
+        const errorText = await enrollmentsResponse.text();
+        console.error('Failed to fetch Guardian enrollments:', enrollmentsResponse.status, errorText);
+        return NextResponse.json({
+          success: true,
+          enrollments: []
+        });
+      }
+
+      const enrollments = await enrollmentsResponse.json();
+      console.log('Fetched Guardian enrollments for user:', session.user.sub, enrollments);
 
       return NextResponse.json({
         success: true,

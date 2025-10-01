@@ -1,2 +1,0 @@
-import{ScreenIds as e}from"../../constants/enums.js";import{BaseContext as s}from"../../models/base-context.js";import{FormHandler as t}from"../../utils/form-handler.js";import{ScreenOverride as r}from"./screen-override.js";class n extends s{static screenIdentifier=e.RESET_PASSWORD;screen;constructor(){super();const e=this.getContext("screen");this.screen=new r(e)}async resetPassword(e){const s={state:this.transaction.state,telemetry:[n.screenIdentifier,"resetPassword"]};await new t(s).submitData(e)}}export{n as default};
-//# sourceMappingURL=index.js.map
