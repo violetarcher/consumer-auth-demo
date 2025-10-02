@@ -717,8 +717,8 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
 
             <Separator />
 
-            {/* Phone Number Section - Show if verified OR if unverified but has step-up metadata (pending completion) */}
-            {user?.phone_number && user.phone_number.trim() !== '' && (user?.phone_verified || user?.user_metadata?.step_up_challenge_started) ? (
+            {/* Phone Number Section - Show if verified OR if unverified but has confirmed SMS enrollment */}
+            {user?.phone_number && user.phone_number.trim() !== '' && (user?.phone_verified || enrollments.some((e: MFAEnrollment) => (e.type === 'sms' || e.type === 'phone') && e.status === 'confirmed' && !user?.phone_verified)) ? (
               <div className={`p-4 border rounded-lg ${
                 user.phone_verified 
                   ? 'bg-muted/30' 
@@ -765,34 +765,6 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
                 </div>
               </div>
             ) : null}
-
-            {/* Reset MFA Section - Show if phone is verified */}
-            {user?.phone_verified && (
-              <>
-                <Separator />
-                <div className="p-4 border rounded-lg bg-destructive/5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 text-destructive" />
-                      <div>
-                        <h4 className="font-medium text-destructive">Reset SMS MFA</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Remove your current phone verification and MFA enrollment. You&apos;ll need to set it up again.
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleResetMfa}
-                      disabled={resetMfaLoading}
-                    >
-                      {resetMfaLoading ? 'Resetting...' : 'Reset MFA'}
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
 
             <Separator />
 
@@ -870,206 +842,271 @@ export function MFAEnrollment({ user }: MFAEnrollmentProps = {}) {
             <div className="space-y-4">
             {factors
               .filter(factor => {
-                // Always show all factors including SMS and Reset MFA
+                // Show all factors including SMS and Reset MFA
                 return true;
               })
-              .map((factor) => (
-              <div key={factor.id}>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    {getFactorIcon(factor.type)}
-                    <div>
-                      <h4 className="font-medium">{factor.name}</h4>
-                      <p className="text-sm text-muted-foreground">{factor.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {factor.type === 'reset-mfa' ? (
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleResetMFA()}
-                        disabled={loading}
-                      >
-                        {loading ? 'Resetting...' : 'Reset'}
-                      </Button>
-                    ) : factor.enabled ? (
-                      <>
-                        <Badge variant="default" className="flex items-center gap-1">
-                          <Check className="w-3 h-3" />
-                          Enabled
-                        </Badge>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDisableFactor(factor.type)}
-                          disabled={loading}
-                        >
-                          {loading ? 'Processing...' : 'Disable'}
-                        </Button>
-                      </>
-                    ) : (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" disabled={loading}>
-                            {loading ? 'Processing...' : 'Setup'}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                              {getFactorIcon(factor.type)}
-                              Setup {factor.name}
-                            </DialogTitle>
-                            <DialogDescription>
-                              {factor.description}
-                            </DialogDescription>
-                          </DialogHeader>
-                          
-                          <div className="space-y-4">
-                            {factor.type === 'sms' && verificationStep === 'setup' && (
-                              <div className="space-y-2">
-                                <Label htmlFor="sms-phone">Phone Number</Label>
-                                <Input
-                                  id="sms-phone"
-                                  type="tel"
-                                  placeholder="+1 (555) 123-4567"
-                                  value={enrollmentData.phoneNumber}
-                                  onChange={(e) => setEnrollmentData({
-                                    ...enrollmentData,
-                                    phoneNumber: e.target.value
-                                  })}
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                  Enter your phone number to verify it via SMS step-up authentication.
-                                </p>
-                              </div>
-                            )}
-                            
-                            {factor.type === 'sms' && verificationStep === 'verify' && (
-                              <div className="space-y-2">
-                                <Label htmlFor="sms-code">Verification Code</Label>
-                                <Input
-                                  id="sms-code"
-                                  placeholder="Enter 6-digit code"
-                                  value={enrollmentData.verificationCode}
-                                  onChange={(e) => setEnrollmentData({
-                                    ...enrollmentData,
-                                    verificationCode: e.target.value
-                                  })}
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                  Enter the code sent to your phone
-                                </p>
-                              </div>
-                            )}
-                            
-                            {factor.type === 'webauthn' && verificationStep === 'setup' && (
-                              <div className="space-y-4">
-                                <div className="text-center">
-                                  <div className="inline-block p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <Shield className="w-16 h-16 mx-auto text-blue-600" />
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mt-3">
-                                    Click "Enroll MFA Factor" to access additional authentication options
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                  <p className="text-sm text-blue-800">
-                                    <strong>Note:</strong> This will redirect you to Guardian where you can choose from available MFA factors like biometrics, security keys, or authenticator apps.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {factor.type === 'totp' && verificationStep === 'setup' && (
-                              <div className="space-y-4">
-                                <div className="text-center">
-                                  <div className="inline-block p-6 bg-green-50 border border-green-200 rounded-lg">
-                                    <Key className="w-16 h-16 mx-auto text-green-600" />
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mt-3">
-                                    Click "Setup Authenticator App" to access the enrollment screen
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                  <p className="text-sm text-blue-800">
-                                    <strong>Note:</strong> You'll be redirected to Guardian where you can scan the QR code with your authenticator app.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {factor.type === 'totp-otp' && verificationStep === 'setup' && (
-                              <div className="space-y-4">
-                                <div className="text-center">
-                                  <div className="inline-block p-6 bg-purple-50 border border-purple-200 rounded-lg">
-                                    <QrCode className="w-16 h-16 mx-auto text-purple-600" />
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mt-3">
-                                    Click "Setup Authenticator App" to get started
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                  <p className="text-sm text-blue-800">
-                                    <strong>Note:</strong> You'll be redirected to Guardian to scan a QR code with apps like Google Authenticator or Authy.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {factor.type === 'reset-mfa' && verificationStep === 'setup' && (
-                              <div className="space-y-4">
-                                <div className="text-center">
-                                  <div className="inline-block p-6 bg-red-50 border border-red-200 rounded-lg">
-                                    <AlertTriangle className="w-16 h-16 mx-auto text-red-600" />
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mt-3">
-                                    This will remove all MFA enrollments from your account
-                                  </p>
-                                </div>
-                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                  <p className="text-sm text-red-800">
-                                    <strong>Warning:</strong> This action cannot be undone. You will need to set up MFA again from scratch.
-                                  </p>
-                                </div>
-                              </div>
-                            )}
+              .map((factor) => {
+                // For SMS factor, always show "Setup" button regardless of enrollment status
+                if (factor.type === 'sms') {
+                  return (
+                    <div key={factor.id}>
+                      <div className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          {getFactorIcon(factor.type)}
+                          <div>
+                            <h4 className="font-medium">{factor.name}</h4>
+                            <p className="text-sm text-muted-foreground">{factor.description}</p>
                           </div>
-                          
-                          <DialogFooter>
-                            {verificationStep === 'setup' ? (
-                              <Button 
-                                onClick={() => handleEnrollFactor(factor.type)}
-                                disabled={loading || (factor.type === 'sms' && !enrollmentData.phoneNumber)}
-                                variant={factor.type === 'reset-mfa' ? 'destructive' : 'default'}
+                        </div>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={loading}>
+                              {loading ? 'Processing...' : 'Setup'}
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                {getFactorIcon('sms')}
+                                Setup {factor.name}
+                              </DialogTitle>
+                              <DialogDescription>
+                                {factor.description}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              {verificationStep === 'setup' && (
+                                <div className="space-y-2">
+                                  <Label htmlFor="phone">Phone Number</Label>
+                                  <Input
+                                    id="phone"
+                                    placeholder="+1 (555) 123-4567"
+                                    value={enrollmentData.phoneNumber}
+                                    onChange={(e) => setEnrollmentData({
+                                      ...enrollmentData,
+                                      phoneNumber: e.target.value
+                                    })}
+                                  />
+                                  <p className="text-sm text-muted-foreground">
+                                    Enter your phone number to verify it via SMS step-up authentication.
+                                  </p>
+                                </div>
+                              )}
+
+                              <Button
+                                onClick={() => handleEnrollFactor('sms')}
+                                disabled={loading || !enrollmentData.phoneNumber}
+                                className="w-full"
                               >
-                                {loading ? 'Processing...' : (
-                                  factor.type === 'sms' ? 'Verify Phone via SMS' :
-                                  factor.type === 'webauthn' ? 'Enroll MFA Factor' :
-                                  factor.type === 'totp' ? 'Setup Guardian App' :
-                                  factor.type === 'totp-otp' ? 'Setup Authenticator App' :
-                                  factor.type === 'reset-mfa' ? 'Reset All MFA' :
-                                  'Continue'
+                                {loading ? 'Processing...' : 'Start Verification'}
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // For all other factors, show normal enabled/disabled logic
+                return (
+                  <div key={factor.id}>
+                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getFactorIcon(factor.type)}
+                        <div>
+                          <h4 className="font-medium">{factor.name}</h4>
+                          <p className="text-sm text-muted-foreground">{factor.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {factor.type === 'reset-mfa' ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleResetMFA()}
+                            disabled={loading}
+                          >
+                            {loading ? 'Resetting...' : 'Reset'}
+                          </Button>
+                        ) : factor.enabled ? (
+                          <>
+                            <Badge variant="default" className="flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              Enabled
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDisableFactor(factor.type)}
+                              disabled={loading}
+                            >
+                              {loading ? 'Processing...' : 'Disable'}
+                            </Button>
+                          </>
+                        ) : (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm" disabled={loading}>
+                                {loading ? 'Processing...' : 'Setup'}
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                  {getFactorIcon(factor.type)}
+                                  Setup {factor.name}
+                                </DialogTitle>
+                                <DialogDescription>
+                                  {factor.description}
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="space-y-4">
+                                {factor.type === 'sms' && verificationStep === 'setup' && (
+                                  <div className="space-y-2">
+                                    <Label htmlFor="sms-phone">Phone Number</Label>
+                                    <Input
+                                      id="sms-phone"
+                                      type="tel"
+                                      placeholder="+1 (555) 123-4567"
+                                      value={enrollmentData.phoneNumber}
+                                      onChange={(e) => setEnrollmentData({
+                                        ...enrollmentData,
+                                        phoneNumber: e.target.value
+                                      })}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                      Enter your phone number to verify it via SMS step-up authentication.
+                                    </p>
+                                  </div>
                                 )}
-                              </Button>
-                            ) : (
-                              <Button 
-                                onClick={() => handleVerifyFactor(factor.type)}
-                                disabled={loading}
-                              >
-                                {loading ? 'Processing...' : 'Refresh Status'}
-                              </Button>
-                            )}
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    )}
+
+                                {factor.type === 'sms' && verificationStep === 'verify' && (
+                                  <div className="space-y-2">
+                                    <Label htmlFor="sms-code">Verification Code</Label>
+                                    <Input
+                                      id="sms-code"
+                                      placeholder="Enter 6-digit code"
+                                      value={enrollmentData.verificationCode}
+                                      onChange={(e) => setEnrollmentData({
+                                        ...enrollmentData,
+                                        verificationCode: e.target.value
+                                      })}
+                                    />
+                                    <p className="text-sm text-muted-foreground">
+                                      Enter the code sent to your phone
+                                    </p>
+                                  </div>
+                                )}
+
+                                {factor.type === 'webauthn' && verificationStep === 'setup' && (
+                                  <div className="space-y-4">
+                                    <div className="text-center">
+                                      <div className="inline-block p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <Shield className="w-16 h-16 mx-auto text-blue-600" />
+                                      </div>
+                                      <p className="text-sm text-muted-foreground mt-3">
+                                        Click "Enroll MFA Factor" to access additional authentication options
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <p className="text-sm text-blue-800">
+                                        <strong>Note:</strong> This will redirect you to Guardian where you can choose from available MFA factors like biometrics, security keys, or authenticator apps.
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {factor.type === 'totp' && verificationStep === 'setup' && (
+                                  <div className="space-y-4">
+                                    <div className="text-center">
+                                      <div className="inline-block p-6 bg-green-50 border border-green-200 rounded-lg">
+                                        <Key className="w-16 h-16 mx-auto text-green-600" />
+                                      </div>
+                                      <p className="text-sm text-muted-foreground mt-3">
+                                        Click "Setup Authenticator App" to access the enrollment screen
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <p className="text-sm text-blue-800">
+                                        <strong>Note:</strong> You'll be redirected to Guardian where you can scan the QR code with your authenticator app.
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {factor.type === 'totp-otp' && verificationStep === 'setup' && (
+                                  <div className="space-y-4">
+                                    <div className="text-center">
+                                      <div className="inline-block p-6 bg-purple-50 border border-purple-200 rounded-lg">
+                                        <QrCode className="w-16 h-16 mx-auto text-purple-600" />
+                                      </div>
+                                      <p className="text-sm text-muted-foreground mt-3">
+                                        Click "Setup Authenticator App" to get started
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <p className="text-sm text-blue-800">
+                                        <strong>Note:</strong> You'll be redirected to Guardian to scan a QR code with apps like Google Authenticator or Authy.
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {factor.type === 'reset-mfa' && verificationStep === 'setup' && (
+                                  <div className="space-y-4">
+                                    <div className="text-center">
+                                      <div className="inline-block p-6 bg-red-50 border border-red-200 rounded-lg">
+                                        <AlertTriangle className="w-16 h-16 mx-auto text-red-600" />
+                                      </div>
+                                      <p className="text-sm text-muted-foreground mt-3">
+                                        This will remove all MFA enrollments from your account
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                      <p className="text-sm text-red-800">
+                                        <strong>Warning:</strong> This action cannot be undone. You will need to set up MFA again from scratch.
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <DialogFooter>
+                                {verificationStep === 'setup' ? (
+                                  <Button
+                                    onClick={() => handleEnrollFactor(factor.type)}
+                                    disabled={loading || (factor.type === 'sms' && !enrollmentData.phoneNumber)}
+                                    variant={factor.type === 'reset-mfa' ? 'destructive' : 'default'}
+                                  >
+                                    {loading ? 'Processing...' : (
+                                      factor.type === 'sms' ? 'Verify Phone via SMS' :
+                                      factor.type === 'webauthn' ? 'Enroll MFA Factor' :
+                                      factor.type === 'totp' ? 'Setup Guardian App' :
+                                      factor.type === 'totp-otp' ? 'Setup Authenticator App' :
+                                      factor.type === 'reset-mfa' ? 'Reset All MFA' :
+                                      'Continue'
+                                    )}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    onClick={() => handleVerifyFactor(factor.type)}
+                                    disabled={loading}
+                                  >
+                                    {loading ? 'Processing...' : 'Refresh Status'}
+                                  </Button>
+                                )}
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        )}
+                      </div>
+                    </div>
+                    {factor !== factors[factors.length - 1] && <Separator />}
                   </div>
-                </div>
-                {factor !== factors[factors.length - 1] && <Separator />}
-              </div>
-            ))}
+                );
+              })}
             </div>
           </div>
         </CardContent>

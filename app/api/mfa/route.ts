@@ -21,7 +21,14 @@ export async function GET() {
     }
 
     try {
-      // Get Management API access token
+      // Initialize Auth0 Management API client
+      const management = new ManagementClient({
+        domain: process.env.AUTH0_MANAGEMENT_DOMAIN!,
+        clientId: process.env.AUTH0_M2M_CLIENT_ID!,
+        clientSecret: process.env.AUTH0_M2M_CLIENT_SECRET!
+      });
+
+      // Try getting user authenticators (might include phone enrollments not in Guardian)
       const domain = process.env.AUTH0_MANAGEMENT_DOMAIN!;
       const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
         method: 'POST',
@@ -34,20 +41,14 @@ export async function GET() {
         })
       });
 
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error('Failed to get Management API token:', tokenResponse.status, errorText);
-        return NextResponse.json({
-          success: true,
-          enrollments: []
-        });
-      }
-
       const tokenData = await tokenResponse.json();
       const accessToken = tokenData.access_token;
 
       // Fetch Guardian enrollments
-      const enrollmentsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/enrollments`, {
+      const enrollmentsUrl = `https://${domain}/api/v2/users/${session.user.sub}/enrollments`;
+      console.log('Fetching Guardian enrollments from:', enrollmentsUrl);
+
+      const enrollmentsResponse = await fetch(enrollmentsUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -55,21 +56,57 @@ export async function GET() {
         }
       });
 
-      if (!enrollmentsResponse.ok) {
-        const errorText = await enrollmentsResponse.text();
-        console.error('Failed to fetch Guardian enrollments:', enrollmentsResponse.status, errorText);
-        return NextResponse.json({
-          success: true,
-          enrollments: []
-        });
-      }
-
       const enrollments = await enrollmentsResponse.json();
-      console.log('Fetched Guardian enrollments for user:', session.user.sub, enrollments);
+      console.log('Fetched Guardian enrollments for user:', session.user.sub);
+      console.log('Raw Guardian API response:', JSON.stringify(enrollments, null, 2));
+
+      // Also try fetching authenticators (different endpoint)
+      const authenticatorsUrl = `https://${domain}/api/v2/users/${session.user.sub}/authenticators`;
+      console.log('Fetching authenticators from:', authenticatorsUrl);
+
+      const authenticatorsResponse = await fetch(authenticatorsUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      let allEnrollments = enrollments || [];
+
+      if (authenticatorsResponse.ok) {
+        const authenticators = await authenticatorsResponse.json();
+        console.log('Fetched authenticators:', JSON.stringify(authenticators, null, 2));
+
+        // Convert confirmed authenticators to enrollment format and merge
+        const authenticatorEnrollments = authenticators
+          .filter((auth: any) => auth.confirmed)
+          .map((auth: any) => ({
+            id: auth.id,
+            status: 'confirmed',
+            type: auth.type, // sms, totp, push, webauthn-platform, etc.
+            auth_method: auth.type,
+            name: auth.name,
+            enrolled_at: auth.enrolled_at || auth.created_at,
+            last_auth: auth.last_auth_at
+          }));
+
+        // Merge both sources, removing duplicates by ID
+        const enrollmentIds = new Set(allEnrollments.map((e: any) => e.id));
+        authenticatorEnrollments.forEach((auth: any) => {
+          if (!enrollmentIds.has(auth.id)) {
+            allEnrollments.push(auth);
+          }
+        });
+
+        console.log('Merged enrollments:', JSON.stringify(allEnrollments, null, 2));
+      } else {
+        console.log('Authenticators endpoint not available or no permission');
+      }
 
       return NextResponse.json({
         success: true,
-        enrollments: enrollments || []
+        enrollments: allEnrollments
       });
     } catch (apiError) {
       console.error('Auth0 Management API error:', apiError);

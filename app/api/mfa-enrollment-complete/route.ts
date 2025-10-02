@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
       const enrollmentAccessToken = enrollmentTokenData.access_token;
 
-      // Query Management API for user's MFA enrollments
+      // Query Management API for user's MFA enrollments (Guardian)
       const enrollmentsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/enrollments`, {
         method: 'GET',
         headers: {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!enrollmentsResponse.ok) {
         const errorText = await enrollmentsResponse.text();
         console.error('Failed to fetch Guardian enrollments:', enrollmentsResponse.status, errorText);
@@ -123,12 +123,59 @@ export async function POST(request: NextRequest) {
           details: 'Could not access Guardian API to verify enrollments.'
         }, { status: 500 });
       }
-      
+
       const enrollments = await enrollmentsResponse.json();
       console.log('Guardian enrollments:', JSON.stringify(enrollments, null, 2));
-      
-      // Check for active SMS enrollments
-      const activeSMSEnrollments = enrollments.filter((enrollment: {
+      console.log('Total Guardian enrollments returned:', enrollments.length);
+      console.log('Guardian enrollment types:', enrollments.map((e: any) => `${e.type}:${e.status}`));
+
+      // Also check authenticators endpoint (contains SMS enrollments)
+      const authenticatorsResponse = await fetch(`https://${domain}/api/v2/users/${session.user.sub}/authenticators`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${enrollmentAccessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      let allEnrollments = enrollments || [];
+
+      if (authenticatorsResponse.ok) {
+        const authenticators = await authenticatorsResponse.json();
+        console.log('Fetched authenticators:', JSON.stringify(authenticators, null, 2));
+
+        // Convert confirmed authenticators to enrollment format and merge
+        const authenticatorEnrollments = authenticators
+          .filter((auth: any) => auth.confirmed)
+          .map((auth: any) => ({
+            id: auth.id,
+            status: 'confirmed',
+            type: auth.type,
+            auth_method: auth.type,
+            name: auth.name,
+            phone_number: auth.phone_number,
+            enrolled_at: auth.enrolled_at || auth.created_at,
+            last_auth: auth.last_auth_at
+          }));
+
+        // Merge both sources, removing duplicates by ID
+        const enrollmentIds = new Set(allEnrollments.map((e: any) => e.id));
+        authenticatorEnrollments.forEach((auth: any) => {
+          if (!enrollmentIds.has(auth.id)) {
+            allEnrollments.push(auth);
+          }
+        });
+
+        console.log('Merged enrollments:', JSON.stringify(allEnrollments, null, 2));
+      } else {
+        console.log('Authenticators endpoint not available or no permission');
+      }
+
+      console.log('Total combined enrollments:', allEnrollments.length);
+      console.log('Combined enrollment types:', allEnrollments.map((e: any) => `${e.type}:${e.status}`));
+
+      // Check for active SMS enrollments in combined list
+      const activeSMSEnrollments = allEnrollments.filter((enrollment: {
         status: string;
         type: string;
         phone_number?: string;
@@ -136,15 +183,15 @@ export async function POST(request: NextRequest) {
         enrollment.status === 'confirmed' &&
         (enrollment.type === 'sms' || enrollment.type === 'phone')
       );
-      
+
       if (activeSMSEnrollments.length === 0) {
         return NextResponse.json({
           success: false,
           error: 'No confirmed SMS MFA enrollment found.',
           details: 'You must complete and confirm SMS MFA enrollment before your phone can be verified.',
           debug: {
-            totalEnrollments: enrollments.length,
-            enrollmentTypes: enrollments.map((e: { type: string; status: string }) => `${e.type}:${e.status}`),
+            totalEnrollments: allEnrollments.length,
+            enrollmentTypes: allEnrollments.map((e: { type: string; status: string }) => `${e.type}:${e.status}`),
             userPhoneNumber: currentUser.data.phone_number
           }
         }, { status: 400 });
