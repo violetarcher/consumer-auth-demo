@@ -158,31 +158,41 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Name</Label>
-                      <Input id="name" value={user.name || ''} readOnly />
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Name</Label>
+                      <div className="text-sm font-medium">{user.name || 'N/A'}</div>
                     </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" value={user.email || ''} readOnly />
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Username</Label>
+                      <div className="text-sm font-medium">{user.username || 'N/A'}</div>
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="nickname">Nickname</Label>
-                    <Input id="nickname" value={user.nickname || ''} readOnly />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Email</Label>
+                      <div className="text-sm font-medium">{user.email || 'N/A'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Nickname</Label>
+                      <div className="text-sm font-medium">{user.nickname || 'N/A'}</div>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="sub">Subject Identifier</Label>
-                    <Input id="sub" value={user.sub || ''} readOnly className="font-mono text-sm" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Phone Number</Label>
+                      <div className="text-sm font-medium">{user.phone_number || 'Not set'}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Subject Identifier</Label>
+                      <div className="text-sm font-medium font-mono">{user.sub || 'N/A'}</div>
+                    </div>
                   </div>
                   <Separator />
-                  <div>
-                    <Label htmlFor="last-updated">Last Updated</Label>
-                    <Input 
-                      id="last-updated" 
-                      value={user.updated_at ? new Date(user.updated_at).toLocaleString() : 'N/A'} 
-                      readOnly 
-                    />
+                  <div className="space-y-2">
+                    <Label className="text-sm text-muted-foreground">Last Updated</Label>
+                    <div className="text-sm font-medium">
+                      {user.updated_at ? new Date(user.updated_at).toLocaleString() : 'N/A'}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

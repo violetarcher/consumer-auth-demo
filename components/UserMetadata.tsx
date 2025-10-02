@@ -21,7 +21,6 @@ const userMetadataSchema = z.object({
   location: z.string().max(100, 'Location is too long').optional(),
   timezone: z.string().optional(),
   language: z.string().optional(),
-  phoneNumber: z.string().optional(),
   company: z.string().max(100, 'Company name is too long').optional(),
   jobTitle: z.string().max(100, 'Job title is too long').optional(),
 });
@@ -44,7 +43,6 @@ export function UserMetadata({ user }: UserMetadataProps) {
     location: '',
     timezone: '',
     language: '',
-    phoneNumber: '',
     company: '',
     jobTitle: '',
   });
@@ -96,7 +94,6 @@ export function UserMetadata({ user }: UserMetadataProps) {
       location: currentUser?.user_metadata?.location || '',
       timezone: currentUser?.user_metadata?.timezone || 'UTC',
       language: currentUser?.user_metadata?.language || 'en',
-      phoneNumber: currentUser?.phone_number || currentUser?.user_metadata?.phone_number || '',
       company: currentUser?.user_metadata?.company_name || currentUser?.user_metadata?.company || '',
       jobTitle: currentUser?.user_metadata?.job_title || '',
     };
@@ -123,7 +120,6 @@ export function UserMetadata({ user }: UserMetadataProps) {
             location: data.location,
             timezone: data.timezone,
             language: data.language,
-            phone_number: data.phoneNumber,
             company_name: data.company,
             job_title: data.jobTitle,
           },
@@ -234,35 +230,19 @@ export function UserMetadata({ user }: UserMetadataProps) {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Website</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+1 (555) 123-4567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <Separator />
 
