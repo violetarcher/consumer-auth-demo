@@ -13,11 +13,17 @@ const entryContent = `
 import LoginId from '@auth0/auth0-acul-js/login-id';
 import Signup from '@auth0/auth0-acul-js/signup';
 import LoginPassword from '@auth0/auth0-acul-js/login-password';
+import SignupPassword from '@auth0/auth0-acul-js/signup-password';
+import Consent from '@auth0/auth0-acul-js/consent';
+import CustomizedConsent from '@auth0/auth0-acul-js/customized-consent';
 
 window.Auth0ACUL = {
   LoginId,
   Signup,
-  LoginPassword
+  LoginPassword,
+  SignupPassword,
+  Consent,
+  CustomizedConsent
 };
 
 console.log('✅ Auth0 ACUL SDK loaded');

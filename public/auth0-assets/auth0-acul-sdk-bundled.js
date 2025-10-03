@@ -27,8 +27,8 @@ var Auth0ACULBundle = (() => {
     }
     static getThemes(e12) {
       if (!e12?.themes) return null;
-      const { default: { borders: t8 = {}, colors: r6 = {}, displayName: g = "", fonts: n6 = {}, page_background: s3 = {}, widget: o2 = {} } = {} } = e12.themes;
-      return { default: { borders: t8, colors: r6, displayName: g, fonts: n6, pageBackground: s3, widget: o2 } };
+      const { default: { borders: t8 = {}, colors: r6 = {}, displayName: g = "", fonts: n6 = {}, page_background: s4 = {}, widget: o3 = {} } = {} } = e12.themes;
+      return { default: { borders: t8, colors: r6, displayName: g, fonts: n6, pageBackground: s4, widget: o3 } };
     }
   };
 
@@ -46,27 +46,27 @@ var Auth0ACULBundle = (() => {
 
   // node_modules/@auth0/auth0-acul-js/dist/models/organization.js
   var a = class {
-    constructor(a6) {
+    constructor(a10) {
       __publicField(this, "id");
       __publicField(this, "name");
       __publicField(this, "usage");
       __publicField(this, "displayName");
       __publicField(this, "branding");
       __publicField(this, "metadata");
-      this.id = a6?.id ?? null, this.name = a6?.name ?? null, this.usage = a6?.usage ?? null, this.displayName = a6?.display_name ?? null, this.branding = a6?.branding ?? null, this.metadata = a6?.metadata ?? null;
+      this.id = a10?.id ?? null, this.name = a10?.name ?? null, this.usage = a10?.usage ?? null, this.displayName = a10?.display_name ?? null, this.branding = a10?.branding ?? null, this.metadata = a10?.metadata ?? null;
     }
   };
 
   // node_modules/@auth0/auth0-acul-js/dist/models/prompt.js
   var a2 = class {
-    constructor(a6) {
+    constructor(a10) {
       __publicField(this, "name");
-      this.name = a6.name;
+      this.name = a10.name;
     }
   };
 
   // node_modules/@auth0/auth0-acul-js/dist/models/screen.js
-  var a3 = class _a2 {
+  var a3 = class _a5 {
     constructor(t8) {
       __publicField(this, "name");
       __publicField(this, "captchaImage");
@@ -77,13 +77,13 @@ var Auth0ACULBundle = (() => {
       __publicField(this, "links");
       __publicField(this, "texts");
       __publicField(this, "captcha");
-      this.name = t8.name, this.captchaImage = t8.captcha?.image ?? null, this.captchaSiteKey = t8.captcha?.siteKey ?? null, this.captchaProvider = t8.captcha?.provider ?? null, this.isCaptchaAvailable = !!t8.captcha, this.texts = t8.texts ?? null, this.captcha = t8.captcha ?? null, this.data = _a2.getScreenData(t8), this.links = _a2.getScreenLinks(t8);
+      this.name = t8.name, this.captchaImage = t8.captcha?.image ?? null, this.captchaSiteKey = t8.captcha?.siteKey ?? null, this.captchaProvider = t8.captcha?.provider ?? null, this.isCaptchaAvailable = !!t8.captcha, this.texts = t8.texts ?? null, this.captcha = t8.captcha ?? null, this.data = _a5.getScreenData(t8), this.links = _a5.getScreenLinks(t8);
     }
-    static getScreenData(a6) {
-      return a6.data ?? null;
+    static getScreenData(a10) {
+      return a10.data ?? null;
     }
-    static getScreenLinks(a6) {
-      return a6.links ?? null;
+    static getScreenLinks(a10) {
+      return a10.links ?? null;
     }
   };
 
@@ -123,22 +123,22 @@ var Auth0ACULBundle = (() => {
     static getAlternateConnections(t8) {
       const e12 = t8?.alternate_connections;
       return e12 && Array.isArray(e12) ? e12.map(((t9) => {
-        const { name: e13, strategy: n6, metadata: r6 } = t9, o2 = { name: e13, strategy: n6, metadata: r6 };
+        const { name: e13, strategy: n6, metadata: r6 } = t9, o3 = { name: e13, strategy: n6, metadata: r6 };
         if ("options" in t9) {
           const { icon_url: e14, display_name: n7, show_as_button: r7 } = t9.options;
-          return { ...o2, options: { iconUrl: e14, displayName: n7, showAsButton: r7 } };
+          return { ...o3, options: { iconUrl: e14, displayName: n7, showAsButton: r7 } };
         }
-        return o2;
+        return o3;
       })) : null;
     }
   };
 
   // node_modules/@auth0/auth0-acul-js/dist/models/untrusted-data.js
   var t3 = class _t {
-    constructor(a6) {
+    constructor(a10) {
       __publicField(this, "submittedFormData");
       __publicField(this, "authorizationParams");
-      this.submittedFormData = _t.getSubmittedFormData(a6), this.authorizationParams = _t.getAuthorizationParams(a6);
+      this.submittedFormData = _t.getSubmittedFormData(a10), this.authorizationParams = _t.getAuthorizationParams(a10);
     }
     static getSubmittedFormData(t8) {
       return t8?.submitted_form_data ? t8?.submitted_form_data ?? null : null;
@@ -150,7 +150,7 @@ var Auth0ACULBundle = (() => {
 
   // node_modules/@auth0/auth0-acul-js/dist/models/user.js
   var e5 = class _e {
-    constructor(a6) {
+    constructor(a10) {
       __publicField(this, "id");
       __publicField(this, "username");
       __publicField(this, "email");
@@ -163,7 +163,7 @@ var Auth0ACULBundle = (() => {
       __publicField(this, "enrolledPhoneNumbers");
       __publicField(this, "enrolledDevices");
       __publicField(this, "organizations");
-      this.id = a6?.id ?? null, this.username = a6?.username ?? null, this.email = a6?.email ?? null, this.picture = a6?.picture ?? null, this.phoneNumber = a6?.phone_number ?? null, this.userMetadata = a6?.user_metadata ?? null, this.appMetadata = a6?.app_metadata ?? null, this.enrolledFactors = a6?.enrolled_factors ?? null, this.enrolledEmails = a6?.enrolled_emails ?? null, this.enrolledPhoneNumbers = a6?.enrolled_phone_numbers ?? null, this.enrolledDevices = a6?.enrolled_devices ?? null, this.organizations = _e.getOrganizations(a6);
+      this.id = a10?.id ?? null, this.username = a10?.username ?? null, this.email = a10?.email ?? null, this.picture = a10?.picture ?? null, this.phoneNumber = a10?.phone_number ?? null, this.userMetadata = a10?.user_metadata ?? null, this.appMetadata = a10?.app_metadata ?? null, this.enrolledFactors = a10?.enrolled_factors ?? null, this.enrolledEmails = a10?.enrolled_emails ?? null, this.enrolledPhoneNumbers = a10?.enrolled_phone_numbers ?? null, this.enrolledDevices = a10?.enrolled_devices ?? null, this.organizations = _e.getOrganizations(a10);
     }
     static getOrganizations(e12) {
       return e12?.organizations && Array.isArray(e12?.organizations) ? e12?.organizations.map(((e13) => ({ organizationId: e13.id, organizationName: e13.name, displayName: e13.display_name, branding: { logoUrl: e13.branding?.logo_url } }))) : null;
@@ -209,9 +209,9 @@ var Auth0ACULBundle = (() => {
   // node_modules/@auth0/auth0-acul-js/dist/utils/browser-capabilities.js
   async function a4() {
     if ("undefined" == typeof navigator) return false;
-    const a6 = navigator;
-    if (a6.brave?.isBrave && "function" == typeof a6.brave.isBrave) try {
-      return Boolean(await a6.brave.isBrave());
+    const a10 = navigator;
+    if (a10.brave?.isBrave && "function" == typeof a10.brave.isBrave) try {
+      return Boolean(await a10.brave.isBrave());
     } catch {
       return false;
     }
@@ -224,16 +224,16 @@ var Auth0ACULBundle = (() => {
     if (!window || !window.PublicKeyCredential) return false;
     try {
       return Boolean(await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
-    } catch (a6) {
-      return console.warn("isUserVerifyingPlatformAuthenticatorAvailable failed", a6), false;
+    } catch (a10) {
+      return console.warn("isUserVerifyingPlatformAuthenticatorAvailable failed", a10), false;
     }
   }
   async function t4() {
     if (!e6()) return false;
     try {
       return await n() && Boolean(await window.PublicKeyCredential.isConditionalMediationAvailable());
-    } catch (a6) {
-      return console.warn("isPasskeySupported failed", a6), false;
+    } catch (a10) {
+      return console.warn("isPasskeySupported failed", a10), false;
     }
   }
   async function r() {
@@ -253,22 +253,22 @@ var Auth0ACULBundle = (() => {
     buildForm(t8) {
       const e12 = document.createElement("form");
       return e12.method = "POST", e12.action = this.options.route ?? "", Object.entries(t8).forEach((([t9, n6]) => {
-        const o2 = document.createElement("input");
-        o2.type = "hidden", o2.name = t9, o2.value = String(n6 ?? ""), e12.appendChild(o2);
+        const o3 = document.createElement("input");
+        o3.type = "hidden", o3.name = t9, o3.value = String(n6 ?? ""), e12.appendChild(o3);
       })), this.addTelemetryField(e12), e12;
     }
     addTelemetryField(t8) {
       const e12 = document.createElement("input");
-      return e12.type = "hidden", e12.name = "acul-sdk", e12.value = "@auth0/auth0-acul-js@0.1.0-beta.8", t8.appendChild(e12), t8;
+      return e12.type = "hidden", e12.name = "acul-sdk", e12.value = "@auth0/auth0-acul-js@0.1.0-beta.9", t8.appendChild(e12), t8;
     }
   };
 
   // node_modules/@auth0/auth0-acul-js/dist/utils/codec.js
   function r2(r6) {
     if (!r6 || "string" != typeof r6) throw new TypeError("Invalid base64Url input");
-    const e12 = r6.replace(/-/g, "+").replace(/_/g, "/"), t8 = (4 - e12.length % 4) % 4, n6 = e12 + "=".repeat(t8), o2 = atob(n6), a6 = new Uint8Array(o2.length);
-    for (let r7 = 0; r7 < o2.length; r7++) a6[r7] = o2.charCodeAt(r7);
-    return a6.buffer;
+    const e12 = r6.replace(/-/g, "+").replace(/_/g, "/"), t8 = (4 - e12.length % 4) % 4, n6 = e12 + "=".repeat(t8), o3 = atob(n6), a10 = new Uint8Array(o3.length);
+    for (let r7 = 0; r7 < o3.length; r7++) a10[r7] = o3.charCodeAt(r7);
+    return a10.buffer;
   }
   function e7(r6) {
     if (!(r6 instanceof ArrayBuffer)) throw new TypeError("Expected an ArrayBuffer");
@@ -284,13 +284,13 @@ var Auth0ACULBundle = (() => {
   }
   async function i(r6) {
     if (!r6?.challenge) throw new Error(e2.PASSKEY_PUBLIC_KEY_UNAVAILABLE);
-    const i5 = await n(), o2 = r2(r6.challenge), c2 = await navigator.credentials.get({ publicKey: { challenge: o2 } });
-    if (!c2) throw new Error(e2.PASSKEY_CREDENTIALS_UNAVAILABLE);
+    const i6 = await n(), o3 = r2(r6.challenge), c3 = await navigator.credentials.get({ publicKey: { challenge: o3, allowCredentials: r6.allowCredentials?.length ? r6.allowCredentials.map(((t8) => ({ id: r2(t8.id), type: "public-key", transports: t8.transports?.map(((t9) => t9)) }))) : void 0 } });
+    if (!c3) throw new Error(e2.PASSKEY_CREDENTIALS_UNAVAILABLE);
     if (!(function(t8) {
       return void 0 !== t8.authenticatorData;
-    })(c2.response)) throw new Error(e2.PASSKEY_EXPECTED_ASSERTION_RESPONSE);
-    const s3 = c2.response;
-    return { id: c2.id, rawId: n2(c2.rawId ?? null), type: c2.type, authenticatorAttachment: c2.authenticatorAttachment, response: { clientDataJSON: n2(s3.clientDataJSON ?? null), authenticatorData: n2(s3.authenticatorData ?? null), signature: n2(s3.signature ?? null), userHandle: n2(s3.userHandle ?? null) }, isUserVerifyingPlatformAuthenticatorAvailable: i5 };
+    })(c3.response)) throw new Error(e2.PASSKEY_EXPECTED_ASSERTION_RESPONSE);
+    const s4 = c3.response;
+    return { id: c3.id, rawId: n2(c3.rawId ?? null), type: c3.type, authenticatorAttachment: c3.authenticatorAttachment, response: { clientDataJSON: n2(s4.clientDataJSON ?? null), authenticatorData: n2(s4.authenticatorData ?? null), signature: n2(s4.signature ?? null), userHandle: n2(s4.userHandle ?? null) }, isUserVerifyingPlatformAuthenticatorAvailable: i6 };
   }
 
   // node_modules/@auth0/auth0-acul-js/dist/shared/screen.js
@@ -314,15 +314,18 @@ var Auth0ACULBundle = (() => {
     const t8 = n6.data?.passkey;
     return t8?.public_key ?? null;
   }
+  function c(n6) {
+    return Array.isArray(n6.data?.scopes) ? (n6.data?.scopes).map(((n7) => ({ value: n7.value, description: "string" == typeof n7.description ? n7.description : "" }))) : [];
+  }
 
   // node_modules/@auth0/auth0-acul-js/dist/screens/login-id/screen-override.js
   var t6 = class extends a3 {
-    constructor(s3) {
-      super(s3);
+    constructor(s4) {
+      super(s4);
       __publicField(this, "signupLink");
       __publicField(this, "resetPasswordLink");
       __publicField(this, "publicKey");
-      this.signupLink = n3(s3), this.resetPasswordLink = r3(s3), this.publicKey = u(s3);
+      this.signupLink = n3(s4), this.resetPasswordLink = r3(s4), this.publicKey = u(s4);
     }
   };
 
@@ -349,12 +352,12 @@ var Auth0ACULBundle = (() => {
     return t8?.options?.username_required ?? false;
   }
   function i3(n6) {
-    const t8 = n6?.connection, o2 = t8?.options?.attributes?.username?.validation;
-    return o2 ? { maxLength: o2.max_length, minLength: o2.min_length, allowedFormats: { usernameInEmailFormat: o2.allowed_types?.email ?? false, usernameInPhoneFormat: o2.allowed_types?.phone_number ?? false } } : null;
+    const t8 = n6?.connection, o3 = t8?.options?.attributes?.username?.validation;
+    return o3 ? { maxLength: o3.max_length, minLength: o3.min_length, allowedFormats: { usernameInEmailFormat: o3.allowed_types?.email ?? false, usernameInPhoneFormat: o3.allowed_types?.phone_number ?? false } } : null;
   }
   function s2(n6) {
-    const t8 = n6?.connection, o2 = t8?.options?.authentication_methods?.password;
-    return o2 ? { minLength: o2.min_length, policy: o2.policy, passwordSecurityInfo: o2.password_security_info } : null;
+    const t8 = n6?.connection, o3 = t8?.options?.authentication_methods?.password;
+    return o3 ? { minLength: o3.min_length, policy: o3.policy, passwordSecurityInfo: o3.password_security_info } : null;
   }
   function u2(n6) {
     const t8 = n6?.connection;
@@ -363,7 +366,7 @@ var Auth0ACULBundle = (() => {
   function r4(n6) {
     return l(n6?.connection, ["required"]);
   }
-  function c(n6) {
+  function c2(n6) {
     return l(n6?.connection, ["optional"]);
   }
   function l(n6, t8) {
@@ -372,18 +375,18 @@ var Auth0ACULBundle = (() => {
 
   // node_modules/@auth0/auth0-acul-js/dist/screens/login-id/transaction-override.js
   var l2 = class _l extends t2 {
-    constructor(s3) {
-      super(s3);
+    constructor(s4) {
+      super(s4);
       __publicField(this, "isSignupEnabled");
       __publicField(this, "isForgotPasswordEnabled");
       __publicField(this, "isPasskeyEnabled");
       __publicField(this, "isUsernameRequired");
       __publicField(this, "usernamePolicy");
       __publicField(this, "allowedIdentifiers");
-      this.isSignupEnabled = n4(s3), this.isForgotPasswordEnabled = t7(s3), this.isPasskeyEnabled = o(s3), this.isUsernameRequired = e10(s3), this.usernamePolicy = i3(s3), this.allowedIdentifiers = _l.getAllowedIdentifiers(s3, this.connectionStrategy);
+      this.isSignupEnabled = n4(s4), this.isForgotPasswordEnabled = t7(s4), this.isPasskeyEnabled = o(s4), this.isUsernameRequired = e10(s4), this.usernamePolicy = i3(s4), this.allowedIdentifiers = _l.getAllowedIdentifiers(s4, this.connectionStrategy);
     }
-    static getAllowedIdentifiers(i5, t8) {
-      return t8 === s.SMS ? [e9.PHONE] : t8 === s.EMAIL ? [e9.EMAIL] : u2(i5);
+    static getAllowedIdentifiers(i6, t8) {
+      return t8 === s.SMS ? [e9.PHONE] : t8 === s.EMAIL ? [e9.EMAIL] : u2(i6);
     }
   };
 
@@ -397,8 +400,8 @@ var Auth0ACULBundle = (() => {
       this.screen = new t6(t8), this.transaction = new l2(e12);
     }
     async login(t8) {
-      const e12 = { state: this.transaction.state, telemetry: [_m2.screenIdentifier, "login"] }, s3 = await r();
-      await new t5(e12).submitData({ ...t8, ...s3 });
+      const e12 = { state: this.transaction.state, telemetry: [_m2.screenIdentifier, "login"] }, s4 = await r();
+      await new t5(e12).submitData({ ...t8, ...s4 });
     }
     async federatedLogin(t8) {
       const e12 = { state: this.transaction.state, telemetry: [_m2.screenIdentifier, "federatedLogin"] };
@@ -411,8 +414,8 @@ var Auth0ACULBundle = (() => {
       await new t5(r6).submitData({ ...t8, passkey: JSON.stringify(n6) });
     }
     async pickCountryCode(e12) {
-      const s3 = { state: this.transaction.state, telemetry: [_m2.screenIdentifier, "pickCountryCode"] };
-      await new t5(s3).submitData({ ...e12, action: E.PICK_COUNTRY_CODE });
+      const s4 = { state: this.transaction.state, telemetry: [_m2.screenIdentifier, "pickCountryCode"] };
+      await new t5(s4).submitData({ ...e12, action: E.PICK_COUNTRY_CODE });
     }
   };
   __publicField(_m2, "screenIdentifier", e.LOGIN_ID);
@@ -420,26 +423,26 @@ var Auth0ACULBundle = (() => {
 
   // node_modules/@auth0/auth0-acul-js/dist/screens/signup/screen-override.js
   var e11 = class extends a3 {
-    constructor(s3) {
-      super(s3);
+    constructor(s4) {
+      super(s4);
       __publicField(this, "loginLink");
-      this.loginLink = e8(s3);
+      this.loginLink = e8(s4);
     }
   };
 
   // node_modules/@auth0/auth0-acul-js/dist/screens/signup/transaction-override.js
   var d = class _d extends t2 {
-    constructor(s3) {
-      super(s3);
+    constructor(s4) {
+      super(s4);
       __publicField(this, "isPasskeyEnabled");
       __publicField(this, "usernamePolicy");
       __publicField(this, "optionalIdentifiers");
       __publicField(this, "requiredIdentifiers");
       __publicField(this, "passwordPolicy");
-      this.isPasskeyEnabled = o(s3), this.usernamePolicy = i3(s3), this.optionalIdentifiers = c(s3), this.requiredIdentifiers = _d.getRequiredIdentifiers(s3, this.connectionStrategy), this.passwordPolicy = s2(s3);
+      this.isPasskeyEnabled = o(s4), this.usernamePolicy = i3(s4), this.optionalIdentifiers = c2(s4), this.requiredIdentifiers = _d.getRequiredIdentifiers(s4, this.connectionStrategy), this.passwordPolicy = s2(s4);
     }
-    static getRequiredIdentifiers(i5, t8) {
-      return t8 === s.SMS ? [e9.PHONE] : t8 === s.EMAIL ? [e9.EMAIL] : r4(i5);
+    static getRequiredIdentifiers(i6, t8) {
+      return t8 === s.SMS ? [e9.PHONE] : t8 === s.EMAIL ? [e9.EMAIL] : r4(i6);
     }
   };
 
@@ -482,15 +485,15 @@ var Auth0ACULBundle = (() => {
 
   // node_modules/@auth0/auth0-acul-js/dist/screens/login-password/transaction-override.js
   var n5 = class extends t2 {
-    constructor(s3) {
-      super(s3);
+    constructor(s4) {
+      super(s4);
       __publicField(this, "isSignupEnabled");
       __publicField(this, "isForgotPasswordEnabled");
       __publicField(this, "isPasskeyEnabled");
       __publicField(this, "getPasswordPolicy");
       __publicField(this, "getUsernamePolicy");
       __publicField(this, "getAllowedIdentifiers");
-      this.isSignupEnabled = n4(s3), this.isForgotPasswordEnabled = t7(s3), this.isPasskeyEnabled = o(s3), this.getPasswordPolicy = () => s2(s3), this.getUsernamePolicy = () => i3(s3), this.getAllowedIdentifiers = () => u2(s3);
+      this.isSignupEnabled = n4(s4), this.isForgotPasswordEnabled = t7(s4), this.isPasskeyEnabled = o(s4), this.getPasswordPolicy = () => s2(s4), this.getUsernamePolicy = () => i3(s4), this.getAllowedIdentifiers = () => u2(s4);
     }
   };
 
@@ -515,11 +518,134 @@ var Auth0ACULBundle = (() => {
   __publicField(_a, "screenIdentifier", e.LOGIN_PASSWORD);
   var a5 = _a;
 
+  // node_modules/@auth0/auth0-acul-js/dist/screens/signup-password/screen-override.js
+  var i5 = class extends a3 {
+    constructor(i6) {
+      super(i6);
+      __publicField(this, "loginLink");
+      __publicField(this, "editLink");
+      __publicField(this, "data");
+      this.loginLink = e8(i6), this.editLink = i2(i6), this.data = a3.getScreenData(i6);
+    }
+  };
+
+  // node_modules/@auth0/auth0-acul-js/dist/screens/signup-password/transaction-override.js
+  var a6 = class _a5 extends t2 {
+    constructor(s4) {
+      super(s4);
+      __publicField(this, "isPasskeyEnabled");
+      __publicField(this, "passwordPolicy");
+      __publicField(this, "optionalIdentifiers");
+      __publicField(this, "requiredIdentifiers");
+      this.isPasskeyEnabled = o(s4), this.passwordPolicy = s2(s4), this.optionalIdentifiers = c2(s4), this.requiredIdentifiers = _a5.getRequiredIdentifiers(s4, this.connectionStrategy);
+    }
+    static getRequiredIdentifiers(e12, i6) {
+      return i6 === s.SMS ? [e9.PHONE] : i6 === s.EMAIL ? [e9.EMAIL] : r4(e12);
+    }
+  };
+
+  // node_modules/@auth0/auth0-acul-js/dist/screens/signup-password/index.js
+  var _a2 = class _a2 extends m {
+    constructor() {
+      super();
+      __publicField(this, "screen");
+      __publicField(this, "transaction");
+      const t8 = this.getContext("screen"), e12 = this.getContext("transaction");
+      this.screen = new i5(t8), this.transaction = new a6(e12);
+    }
+    async signup(t8) {
+      const e12 = { state: this.transaction.state, telemetry: [this.constructor.name, "signup"] };
+      if (t8.phone?.trim()) {
+        const { phone: e13, ...s4 } = t8;
+        t8 = { ...s4, phone_number: e13 };
+      }
+      await new t5(e12).submitData(t8);
+    }
+    async federatedSignup(t8) {
+      const e12 = { state: this.transaction.state, telemetry: [_a2.screenIdentifier, "federatedSignup"] };
+      await new t5(e12).submitData(t8);
+    }
+  };
+  __publicField(_a2, "screenIdentifier", e.SIGNUP_PASSWORD);
+  var a7 = _a2;
+
+  // node_modules/@auth0/auth0-acul-js/dist/screens/consent/screen-override.js
+  var _o = class _o extends a3 {
+    constructor(e12) {
+      super(e12);
+      __publicField(this, "scopes");
+      __publicField(this, "hideScopes");
+      this.scopes = _o.getScopes(e12), this.hideScopes = _o.getHideScopes(e12);
+    }
+  };
+  __publicField(_o, "getScopes", (e12) => c(e12));
+  __publicField(_o, "getHideScopes", (e12) => !!e12.data?.hideScopes);
+  var o2 = _o;
+
+  // node_modules/@auth0/auth0-acul-js/dist/screens/consent/index.js
+  var _a3 = class _a3 extends m {
+    constructor() {
+      super();
+      __publicField(this, "screen");
+      const t8 = this.getContext("screen");
+      this.screen = new o2(t8);
+    }
+    async accept(e12) {
+      const s4 = { state: this.transaction.state, telemetry: [_a3.screenIdentifier, "accept"] }, r6 = { ...e12, action: E.ACCEPT };
+      await new t5(s4).submitData(r6);
+    }
+    async deny(e12) {
+      const s4 = { state: this.transaction.state, telemetry: [_a3.screenIdentifier, "deny"] }, r6 = { ...e12, action: E.DENY };
+      await new t5(s4).submitData(r6);
+    }
+  };
+  __publicField(_a3, "screenIdentifier", e.CONSENT);
+  var a8 = _a3;
+
+  // node_modules/@auth0/auth0-acul-js/dist/screens/customized-consent/screen-override.js
+  var _s = class _s extends a3 {
+    constructor(t8) {
+      super(t8);
+      __publicField(this, "scopes");
+      __publicField(this, "authorizationDetails");
+      this.scopes = _s.getScopes(t8), this.authorizationDetails = _s.getAuthorizationDetails(t8);
+    }
+  };
+  __publicField(_s, "getScopes", (t8) => c(t8));
+  __publicField(_s, "getAuthorizationDetails", (t8) => {
+    const e12 = t8.data?.authorization_details;
+    return Array.isArray(e12) ? e12.filter(((t9) => "object" == typeof t9 && null !== t9 && "type" in t9 && "string" == typeof t9.type)) : [];
+  });
+  var s3 = _s;
+
+  // node_modules/@auth0/auth0-acul-js/dist/screens/customized-consent/index.js
+  var _a4 = class _a4 extends m {
+    constructor() {
+      super();
+      __publicField(this, "screen");
+      const t8 = this.getContext("screen");
+      this.screen = new s3(t8);
+    }
+    async accept(e12) {
+      const s4 = { state: this.transaction.state, telemetry: [_a4.screenIdentifier, "accept"] }, r6 = { ...e12, action: E.ACCEPT };
+      await new t5(s4).submitData(r6);
+    }
+    async deny(e12) {
+      const s4 = { state: this.transaction.state, telemetry: [_a4.screenIdentifier, "deny"] }, r6 = { ...e12, action: E.DENY };
+      await new t5(s4).submitData(r6);
+    }
+  };
+  __publicField(_a4, "screenIdentifier", e.CUSTOMIZED_CONSENT);
+  var a9 = _a4;
+
   // temp-sdk-entry.js
   window.Auth0ACUL = {
     LoginId: m2,
     Signup: i4,
-    LoginPassword: a5
+    LoginPassword: a5,
+    SignupPassword: a7,
+    Consent: a8,
+    CustomizedConsent: a9
   };
   console.log("\u2705 Auth0 ACUL SDK loaded");
   console.log("Available:", Object.keys(window.Auth0ACUL));

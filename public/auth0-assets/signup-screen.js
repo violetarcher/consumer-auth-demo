@@ -899,7 +899,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Start initialization
-  initializeSignup();
+  console.log('🚀 About to call initializeSignup()...');
+  initializeSignup().catch(error => {
+    console.error('❌ initializeSignup() failed:', error);
+  });
+  console.log('✅ initializeSignup() called');
 });
 
 // Global error handler
