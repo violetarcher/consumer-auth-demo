@@ -104,6 +104,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
           console.log('=== END MANAGER DISCOVERY ===');
 
+          // Log transaction and screen data for social connections
+          console.log('=== SOCIAL CONNECTION DISCOVERY ===');
+          console.log('Transaction object:', this.loginIdManager.transaction);
+
+          // Deep dive into transaction properties
+          if (this.loginIdManager.transaction) {
+            console.log('Transaction properties:');
+            for (const prop in this.loginIdManager.transaction) {
+              const value = this.loginIdManager.transaction[prop];
+              console.log(`  transaction.${prop}:`, value);
+            }
+          }
+
+          console.log('Screen object:', this.loginIdManager.screen);
+
+          // Deep dive into screen properties
+          if (this.loginIdManager.screen) {
+            console.log('Screen properties:');
+            for (const prop in this.loginIdManager.screen) {
+              const value = this.loginIdManager.screen[prop];
+              console.log(`  screen.${prop}:`, value);
+            }
+          }
+
+          console.log('=== END SOCIAL CONNECTION DISCOVERY ===');
+
           // Check for initial errors from transaction
           if (this.loginIdManager.transaction?.errors && this.loginIdManager.transaction.errors.length > 0) {
             console.log('⚠️ ACUL SDK errors detected:', this.loginIdManager.transaction.errors);
@@ -383,6 +409,36 @@ document.addEventListener('DOMContentLoaded', function() {
         errorContainer.style.display = 'none';
         container.appendChild(errorContainer);
 
+        // Social login buttons (if available)
+        const socialButtons = this.createSocialButtons();
+        if (socialButtons) {
+          container.appendChild(socialButtons);
+
+          // Divider
+          const divider = document.createElement('div');
+          divider.style.cssText = `
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            gap: 1rem;
+          `;
+
+          const line1 = document.createElement('div');
+          line1.style.cssText = 'flex: 1; height: 1px; background: var(--border);';
+
+          const orText = document.createElement('span');
+          orText.textContent = 'OR';
+          orText.style.cssText = 'color: var(--muted-fg); font-size: 0.875rem; font-weight: 500;';
+
+          const line2 = document.createElement('div');
+          line2.style.cssText = 'flex: 1; height: 1px; background: var(--border);';
+
+          divider.appendChild(line1);
+          divider.appendChild(orText);
+          divider.appendChild(line2);
+          container.appendChild(divider);
+        }
+
         // Main form
         const form = document.createElement('form');
         form.className = 'auth0-form';
@@ -441,6 +497,156 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(form);
 
         return container;
+      }
+
+      createSocialButtons() {
+        // Check multiple possible locations for social connection info
+        // The correct property is transaction.alternateConnections
+        let connections = this.loginIdManager?.transaction?.alternateConnections ||
+                         this.loginIdManager?.transaction?.connections ||
+                         this.loginIdManager?.screen?.connections ||
+                         [];
+
+        console.log('=== SOCIAL BUTTONS CREATION ===');
+        console.log('Checking for connections...');
+        console.log('transaction.alternateConnections:', this.loginIdManager?.transaction?.alternateConnections);
+        console.log('transaction.currentConnection:', this.loginIdManager?.transaction?.currentConnection);
+        console.log('Final connections array:', connections);
+
+        if (!connections || connections.length === 0) {
+          console.log('No social connections available - button will not render');
+          return null;
+        }
+
+        console.log('Found connections:', connections);
+
+        // Filter for social connections (google-oauth2, facebook, etc.)
+        const socialConnections = connections.filter(conn =>
+          conn.name && (
+            conn.name.includes('google') ||
+            conn.name.includes('facebook') ||
+            conn.name.includes('twitter') ||
+            conn.name.includes('github') ||
+            conn.name.includes('linkedin') ||
+            conn.type === 'social'
+          )
+        );
+
+        if (socialConnections.length === 0) {
+          console.log('No social connections found in available connections');
+          return null;
+        }
+
+        const container = document.createElement('div');
+        container.style.cssText = 'display: flex; flex-direction: column; gap: 0.75rem;';
+
+        socialConnections.forEach(connection => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'social-login-button';
+          button.dataset.connection = connection.name;
+
+          // Style the button
+          button.style.cssText = `
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: white;
+            color: var(--fg);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+          `;
+
+          button.addEventListener('mouseenter', () => {
+            button.style.background = 'var(--secondary)';
+            button.style.borderColor = 'var(--primary)';
+          });
+
+          button.addEventListener('mouseleave', () => {
+            button.style.background = 'white';
+            button.style.borderColor = 'var(--border)';
+          });
+
+          // Add icon and text based on connection
+          const icon = this.getSocialIcon(connection.name);
+          const text = this.getSocialButtonText(connection.name);
+
+          button.innerHTML = `${icon}<span>${text}</span>`;
+
+          // Add click handler
+          button.addEventListener('click', () => {
+            this.handleSocialLogin(connection.name);
+          });
+
+          container.appendChild(button);
+        });
+
+        return container;
+      }
+
+      getSocialIcon(connectionName) {
+        if (connectionName.includes('google')) {
+          return `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707 0-.593.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9c0 1.452.348 2.827.957 4.042l3.007-2.335z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>`;
+        }
+        // Add more icons as needed
+        return '';
+      }
+
+      getSocialButtonText(connectionName) {
+        if (connectionName.includes('google')) {
+          return 'Continue with Google';
+        }
+        if (connectionName.includes('facebook')) {
+          return 'Continue with Facebook';
+        }
+        if (connectionName.includes('github')) {
+          return 'Continue with GitHub';
+        }
+        if (connectionName.includes('linkedin')) {
+          return 'Continue with LinkedIn';
+        }
+        return `Continue with ${connectionName}`;
+      }
+
+      handleSocialLogin(connectionName) {
+        console.log('Social login clicked:', connectionName);
+
+        if (!this.loginIdManager) {
+          console.error('LoginId manager not available');
+          return;
+        }
+
+        try {
+          // Use ACUL SDK to trigger social login
+          if (typeof this.loginIdManager.socialLogin === 'function') {
+            console.log('Using ACUL SDK socialLogin method');
+            this.loginIdManager.socialLogin({ connection: connectionName });
+          } else if (typeof this.loginIdManager.login === 'function') {
+            console.log('Using ACUL SDK login method with connection');
+            this.loginIdManager.login({ connection: connectionName });
+          } else {
+            // Fallback: direct navigation to Auth0 authorize endpoint
+            console.log('Falling back to direct authorize URL');
+            const urlParams = new URLSearchParams(window.location.search);
+            const state = urlParams.get('state');
+
+            const authorizeUrl = new URL('/authorize', window.location.origin);
+            if (state) authorizeUrl.searchParams.set('state', state);
+            authorizeUrl.searchParams.set('connection', connectionName);
+
+            window.location.href = authorizeUrl.toString();
+          }
+        } catch (error) {
+          console.error('Social login error:', error);
+          this.showError('Unable to connect with ' + connectionName + '. Please try again.');
+        }
       }
 
       createInputGroup(id, label, type, placeholder) {
@@ -714,6 +920,39 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       createModernForm() {
+        const container = document.createElement('div');
+        container.style.cssText = 'width: 100%;';
+
+        // Social login buttons (if available)
+        const socialButtons = this.createSocialButtons();
+        if (socialButtons) {
+          container.appendChild(socialButtons);
+
+          // Divider
+          const divider = document.createElement('div');
+          divider.style.cssText = `
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            gap: 1rem;
+          `;
+
+          const line1 = document.createElement('div');
+          line1.style.cssText = 'flex: 1; height: 1px; background: rgba(255,255,255,0.3);';
+
+          const orText = document.createElement('span');
+          orText.textContent = 'OR';
+          orText.style.cssText = 'color: #64748b; font-size: 0.875rem; font-weight: 500;';
+
+          const line2 = document.createElement('div');
+          line2.style.cssText = 'flex: 1; height: 1px; background: rgba(255,255,255,0.3);';
+
+          divider.appendChild(line1);
+          divider.appendChild(orText);
+          divider.appendChild(line2);
+          container.appendChild(divider);
+        }
+
         const form = document.createElement('form');
         form.id = 'login-form';
         form.style.cssText = 'width: 100%;';
@@ -831,7 +1070,9 @@ document.addEventListener('DOMContentLoaded', function() {
         form.appendChild(submitButton);
         form.appendChild(signupContainer);
 
-        return form;
+        container.appendChild(form);
+
+        return container;
       }
 
       addGeometricShapes(container) {
