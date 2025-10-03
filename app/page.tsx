@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ShoppingCart, Shield, Users, Truck, CreditCard, User } from 'lucide-react';
+import { HeroButtons, CTAButton, FooterSignup } from '@/components/HomeClient';
 
 export default async function HomePage() {
   const session = await getSession();
@@ -59,9 +60,12 @@ export default async function HomePage() {
                   </Button>
                 </div>
               ) : (
-                <Button asChild>
-                  <a href="/api/auth/login">Sign In</a>
-                </Button>
+                <div className="flex items-center space-x-3">
+                  <Button asChild variant="ghost" size="sm">
+                    <a href="/api/auth/login">Sign In</a>
+                  </Button>
+                  <CTAButton variant="default" size="sm" text="Join Now" />
+                </div>
               )}
             </div>
           </div>
@@ -78,15 +82,7 @@ export default async function HomePage() {
             Discover amazing products with secure authentication powered by Auth0.
             Your privacy and security are our top priorities.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="px-8">
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              Start Shopping
-            </Button>
-            <Button variant="outline" size="lg" className="px-8">
-              Learn More
-            </Button>
-          </div>
+          <HeroButtons />
         </div>
       </section>
 
@@ -115,21 +111,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-
-      {/* CTA Section */}
-      {!user && (
-        <section className="py-16 bg-primary text-primary-foreground">
-          <div className="container mx-auto px-4 text-center">
-            <h3 className="text-3xl font-bold mb-4">Ready to Get Started?</h3>
-            <p className="text-lg mb-8 opacity-90">
-              Sign up today and enjoy secure shopping with personalized recommendations
-            </p>
-            <Button asChild size="lg" variant="secondary" className="px-8">
-              <a href="/api/auth/login">Create Account</a>
-            </Button>
-          </div>
-        </section>
-      )}
 
       {/* Footer */}
       <footer className="bg-muted py-12">
@@ -164,7 +145,7 @@ export default async function HomePage() {
                 ) : (
                   <>
                     <li><a href="/api/auth/login" className="text-muted-foreground hover:text-foreground">Sign In</a></li>
-                    <li><a href="/api/auth/login" className="text-muted-foreground hover:text-foreground">Create Account</a></li>
+                    <li><FooterSignup /></li>
                   </>
                 )}
               </ul>
