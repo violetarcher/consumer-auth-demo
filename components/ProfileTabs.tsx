@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { User, Shield, Settings, Activity, Key, LogOut } from 'lucide-react';
+import { User, Shield, Settings, Activity, Key, LogOut, ShoppingCart } from 'lucide-react';
 import { ReactNode } from 'react';
 
 interface ProfileTabsProps {
@@ -32,6 +32,10 @@ export function ProfileTabs({ defaultValue, children }: ProfileTabsProps) {
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="cart" className="flex items-center gap-2">
+            <ShoppingCart className="w-4 h-4" />
+            Cart
           </TabsTrigger>
           <TabsTrigger value="tokens" className="flex items-center gap-2">
             <Key className="w-4 h-4" />

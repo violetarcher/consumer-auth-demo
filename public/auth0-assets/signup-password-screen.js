@@ -59,12 +59,65 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Transaction data:', transactionData);
     console.log('Email:', email);
 
+    // Check for ACUL SDK errors from transaction
+    let initialErrors = null;
+    if (transactionData?.errors && transactionData.errors.length > 0) {
+      console.log('⚠️ ACUL SDK errors detected:', transactionData.errors);
+      initialErrors = transactionData.errors;
+    }
+
+    // Set up SDK event listeners if available
+    setupSignupPasswordSDKEventListeners(signupPasswordManager);
+
     // Render the dramatic split-screen form
-    renderSignupPasswordScreen(signupPasswordManager, email);
+    renderSignupPasswordScreen(signupPasswordManager, email, initialErrors);
   }
 
-  function renderSignupPasswordScreen(manager, email) {
+  function setupSignupPasswordSDKEventListeners(manager) {
+    console.log('Setting up SignupPassword SDK event listeners...');
+
+    if (manager && typeof manager.on === 'function') {
+      const events = ['success', 'error', 'redirect', 'stateChange'];
+
+      events.forEach(event => {
+        try {
+          manager.on(event, (data) => {
+            console.log(`SignupPassword SDK Event: ${event}`, data);
+
+            if (event === 'error') {
+              const errorContainer = document.getElementById('error-container');
+              if (errorContainer) {
+                const errorMessage = data?.message || data?.description || 'An error occurred. Please try again.';
+                errorContainer.textContent = errorMessage;
+                errorContainer.style.display = 'block';
+              }
+
+              // Re-enable submit button
+              const submitButton = document.getElementById('submit-button');
+              const submitText = document.getElementById('submit-text');
+              const submitSpinner = document.getElementById('submit-spinner');
+              if (submitButton) {
+                submitButton.disabled = false;
+                if (submitText) submitText.style.display = 'inline';
+                if (submitSpinner) submitSpinner.style.display = 'none';
+              }
+            }
+          });
+          console.log(`✅ Listener registered for: ${event}`);
+        } catch (error) {
+          console.log(`❌ Could not register listener for: ${event}`, error);
+        }
+      });
+    } else {
+      console.log('⚠️ SignupPassword manager does not support event listeners');
+    }
+  }
+
+  function renderSignupPasswordScreen(manager, email, initialErrors) {
     console.log('Rendering signup-password screen...');
+    if (initialErrors) {
+      console.log('Rendering with initial errors:', initialErrors);
+    }
 
     // Clear existing content and set body styles
     document.body.innerHTML = '';
@@ -116,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
     container.appendChild(leftPanel);
 
     // Create right panel (form)
-    const rightPanel = createRightPanel(manager, email);
+    const rightPanel = createRightPanel(manager, email, initialErrors);
     container.appendChild(rightPanel);
 
     // Append to body
@@ -205,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return panel;
   }
 
-  function createRightPanel(manager, email) {
+  function createRightPanel(manager, email, initialErrors) {
     const panel = document.createElement('div');
     panel.style.cssText = `
       flex: 1;
@@ -260,7 +313,7 @@ document.addEventListener('DOMContentLoaded', function() {
     header.appendChild(welcomeDesc);
 
     // Form
-    const form = createForm(manager, email);
+    const form = createForm(manager, email, initialErrors);
 
     formContainer.appendChild(header);
     formContainer.appendChild(form);
@@ -269,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return panel;
   }
 
-  function createForm(manager, email) {
+  function createForm(manager, email, initialErrors) {
     const form = document.createElement('form');
     form.id = 'signup-password-form';
     form.style.cssText = 'width: 100%;';
@@ -287,11 +340,19 @@ document.addEventListener('DOMContentLoaded', function() {
       margin-bottom: 1.5rem;
       font-size: 0.9rem;
     `;
+
+    // Display initial ACUL SDK errors if present
+    if (initialErrors && initialErrors.length > 0) {
+      const errorMessages = initialErrors.map(err => err.message || err.description || 'Unknown error').join('. ');
+      errorContainer.textContent = errorMessages;
+      errorContainer.style.display = 'block';
+    }
+
     form.appendChild(errorContainer);
 
-    // Password input
+    // Password input with toggle visibility
     const passwordGroup = document.createElement('div');
-    passwordGroup.style.cssText = 'margin-bottom: 2rem; position: relative;';
+    passwordGroup.style.cssText = 'margin-bottom: 1rem; position: relative;';
 
     const passwordInput = document.createElement('input');
     passwordInput.id = 'password';
@@ -302,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
     passwordInput.autocomplete = 'new-password';
     passwordInput.style.cssText = `
       width: 100%;
-      padding: 1.25rem 1.5rem;
+      padding: 1.25rem 3.5rem 1.25rem 1.5rem;
       border: 2px solid rgba(255,255,255,0.3);
       border-radius: 16px;
       background: rgba(255,255,255,0.1);
@@ -314,6 +375,58 @@ document.addEventListener('DOMContentLoaded', function() {
       transition: all 0.3s ease;
       outline: none;
     `;
+
+    // Toggle password visibility button
+    const toggleButton = document.createElement('button');
+    toggleButton.type = 'button';
+    toggleButton.innerHTML = `
+      <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <svg id="eye-off-icon" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+      </svg>
+    `;
+    toggleButton.style.cssText = `
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.3s ease;
+    `;
+
+    toggleButton.addEventListener('click', () => {
+      const eyeIcon = document.getElementById('eye-icon');
+      const eyeOffIcon = document.getElementById('eye-off-icon');
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+      } else {
+        passwordInput.type = 'password';
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+      }
+    });
+
+    toggleButton.addEventListener('mouseenter', () => {
+      toggleButton.style.color = '#1a1a2e';
+    });
+
+    toggleButton.addEventListener('mouseleave', () => {
+      toggleButton.style.color = '#64748b';
+    });
 
     // Add input focus effects
     passwordInput.addEventListener('focus', () => {
@@ -329,6 +442,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     passwordGroup.appendChild(passwordInput);
+    passwordGroup.appendChild(toggleButton);
+
+    // Password requirements hint
+    const requirementsHint = document.createElement('div');
+    requirementsHint.style.cssText = `
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 1.5rem;
+      padding: 0.75rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+    `;
+    requirementsHint.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 0.5rem;">Password must contain:</div>
+      <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.6;">
+        <li>At least 8 characters</li>
+        <li>Lowercase letter (a-z)</li>
+        <li>Uppercase letter (A-Z)</li>
+        <li>Number (0-9)</li>
+      </ul>
+    `;
+    form.appendChild(requirementsHint);
 
     // Submit button
     const submitButton = document.createElement('button');
@@ -386,14 +521,44 @@ document.addEventListener('DOMContentLoaded', function() {
       backContainer.appendChild(backLink);
     }
 
+    // Client-side password validation
+    function validatePassword(password) {
+      const errors = [];
+
+      if (!password) {
+        errors.push('Password cannot be empty');
+        return errors;
+      }
+
+      if (password.length < 8) {
+        errors.push('Password must be at least 8 characters long');
+      }
+
+      if (!/[a-z]/.test(password)) {
+        errors.push('Password must contain at least one lowercase letter (a-z)');
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        errors.push('Password must contain at least one uppercase letter (A-Z)');
+      }
+
+      if (!/[0-9]/.test(password)) {
+        errors.push('Password must contain at least one number (0-9)');
+      }
+
+      return errors;
+    }
+
     // Form submission handler
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const password = passwordInput.value;
 
-      if (!password) {
-        showError('Please enter a password');
+      // Validate password
+      const validationErrors = validatePassword(password);
+      if (validationErrors.length > 0) {
+        showError(validationErrors.join('. '));
         return;
       }
 
@@ -420,7 +585,19 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✅ Signup submitted successfully');
       } catch (error) {
         console.error('❌ Signup failed:', error);
-        showError(error.message || 'An error occurred. Please try again.');
+
+        // Extract error message from Auth0 response
+        let errorMessage = 'An error occurred. Please try again.';
+
+        if (error.message) {
+          errorMessage = error.message;
+        } else if (error.description) {
+          errorMessage = error.description;
+        } else if (error.error_description) {
+          errorMessage = error.error_description;
+        }
+
+        showError(errorMessage);
 
         // Re-enable submit button
         submitButton.disabled = false;

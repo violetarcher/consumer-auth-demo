@@ -112,12 +112,57 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             console.log('=== END PASSWORD SDK DISCOVERY ===');
+
+            // Check for initial errors from transaction
+            if (this.passwordManager.transaction?.errors && this.passwordManager.transaction.errors.length > 0) {
+              console.log('⚠️ ACUL SDK errors detected:', this.passwordManager.transaction.errors);
+            }
+
+            // Set up SDK event listeners
+            this.setupPasswordSDKEventListeners();
           }
         } catch (error) {
           console.warn('Failed to initialize Auth0 Password manager:', error);
         }
       }
     }
+
+    CustomPasswordScreen.prototype.setupPasswordSDKEventListeners = function() {
+      console.log('Setting up Password SDK event listeners...');
+
+      if (this.passwordManager && typeof this.passwordManager.on === 'function') {
+        const events = ['success', 'error', 'redirect', 'stateChange'];
+
+        events.forEach(event => {
+          try {
+            this.passwordManager.on(event, (data) => {
+              console.log(`Password SDK Event: ${event}`, data);
+
+              if (event === 'error') {
+                const errorContainer = document.getElementById('error-container');
+                if (errorContainer) {
+                  const errorMessage = data?.message || data?.description || data?.error_description || 'An error occurred. Please try again.';
+                  errorContainer.innerHTML = '<div style="color: #dc2626; padding: 1rem; background: rgba(220, 38, 38, 0.1); border-radius: 8px; margin-bottom: 1rem;">' + errorMessage + '</div>';
+                  errorContainer.style.display = 'block';
+                }
+
+                // Re-enable submit button
+                const submitButton = document.getElementById('submit-button');
+                if (submitButton) {
+                  submitButton.disabled = false;
+                  submitButton.innerHTML = 'Continue';
+                }
+              }
+            });
+            console.log(`✅ Listener registered for: ${event}`);
+          } catch (error) {
+            console.log(`❌ Could not register listener for: ${event}`, error);
+          }
+        });
+      } else {
+        console.log('⚠️ Password manager does not support event listeners');
+      }
+    };
 
     CustomPasswordScreen.prototype.render = function() {
       console.log('Rendering dramatic custom password screen');

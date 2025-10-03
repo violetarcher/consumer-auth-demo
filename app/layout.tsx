@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import React from 'react';
+import ClientAuthProvider from '@/components/ClientAuthProvider';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
@@ -21,8 +22,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
-        <Toaster />
+        <ClientAuthProvider>
+          {children}
+          <Toaster />
+        </ClientAuthProvider>
       </body>
     </html>
   );

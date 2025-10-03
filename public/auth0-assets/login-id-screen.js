@@ -103,6 +103,51 @@ document.addEventListener('DOMContentLoaded', function() {
           }
 
           console.log('=== END MANAGER DISCOVERY ===');
+
+          // Check for initial errors from transaction
+          if (this.loginIdManager.transaction?.errors && this.loginIdManager.transaction.errors.length > 0) {
+            console.log('⚠️ ACUL SDK errors detected:', this.loginIdManager.transaction.errors);
+          }
+
+          // Set up SDK event listeners
+          this.setupLoginIdSDKEventListeners();
+        }
+      }
+
+      setupLoginIdSDKEventListeners() {
+        console.log('Setting up LoginId SDK event listeners...');
+
+        if (this.loginIdManager && typeof this.loginIdManager.on === 'function') {
+          const events = ['success', 'error', 'redirect', 'stateChange'];
+
+          events.forEach(event => {
+            try {
+              this.loginIdManager.on(event, (data) => {
+                console.log(`LoginId SDK Event: ${event}`, data);
+
+                if (event === 'error') {
+                  const errorContainer = document.getElementById('error-container');
+                  if (errorContainer) {
+                    const errorMessage = data?.message || data?.description || data?.error_description || 'An error occurred. Please try again.';
+                    errorContainer.innerHTML = '<div style="color: #dc2626; padding: 1rem; background: rgba(220, 38, 38, 0.1); border-radius: 8px; margin-bottom: 1rem;">' + errorMessage + '</div>';
+                    errorContainer.style.display = 'block';
+                  }
+
+                  // Re-enable submit button
+                  const submitButton = document.getElementById('submit-button');
+                  if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = 'Continue';
+                  }
+                }
+              });
+              console.log(`✅ Listener registered for: ${event}`);
+            } catch (error) {
+              console.log(`❌ Could not register listener for: ${event}`, error);
+            }
+          });
+        } else {
+          console.log('⚠️ LoginId manager does not support event listeners');
         }
       }
 

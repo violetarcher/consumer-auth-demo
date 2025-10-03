@@ -287,9 +287,53 @@ function TokensSection({ user }: { user: any }) {
   );
 }
 
+function ShoppingCartSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Shopping Cart</CardTitle>
+        <CardDescription>
+          Your saved items and cart information
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="text-center py-12 text-muted-foreground">
+          <div className="mb-4">
+            <svg
+              className="w-16 h-16 mx-auto text-muted-foreground/40"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold mb-2">Your cart is empty</h3>
+          <p className="text-sm mb-4">
+            Start shopping to add items to your cart
+          </p>
+          <Button asChild>
+            <a href="/">Browse Products</a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ProfileClient({ user }: ProfileClientProps) {
   return (
     <>
+      {/* Cart Tab */}
+      <TabsContent value="cart" className="space-y-6">
+        <ShoppingCartSection />
+      </TabsContent>
+
       {/* Tokens Tab */}
       <TabsContent value="tokens" className="space-y-6">
         <TokensSection user={user} />

@@ -112,6 +112,14 @@ document.addEventListener('DOMContentLoaded', function() {
               });
 
               console.log('=== END SIGNUP SDK DISCOVERY ===');
+
+              // Check for initial errors from transaction
+              if (this.signupManager.transaction?.errors && this.signupManager.transaction.errors.length > 0) {
+                console.log('⚠️ ACUL SDK errors detected:', this.signupManager.transaction.errors);
+              }
+
+              // Set up SDK event listeners (moved from trySignupSDKMethods)
+              this.setupSignupSDKEventListeners();
             }
           } catch (error) {
             console.warn('Failed to initialize Auth0 Signup manager:', error);
@@ -452,23 +460,18 @@ document.addEventListener('DOMContentLoaded', function() {
       handleSignup() {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        const passwordConfirm = document.getElementById('password_confirm').value;
 
         console.log('Signup - submitting signup form');
 
-        // Basic validation
-        if (!username || !password || !passwordConfirm) {
-          this.showError('Please fill in all fields.');
+        // Validate password
+        const validationErrors = this.validatePassword(password);
+        if (!username) {
+          this.showError('Please enter your email address.');
           return;
         }
 
-        if (password !== passwordConfirm) {
-          this.showError('Passwords do not match.');
-          return;
-        }
-
-        if (password.length < 8) {
-          this.showError('Password must be at least 8 characters long.');
+        if (validationErrors.length > 0) {
+          this.showError(validationErrors.join('. '));
           return;
         }
 
@@ -476,15 +479,42 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Progressive SDK Enhancement: Try SDK methods first
         if (this.signupManager) {
-          this.trySignupSDKMethods(username, password, passwordConfirm);
+          this.trySignupSDKMethods(username, password);
         } else {
           // Fallback to manual form submission
           console.log('No ACUL SDK available, using form submission fallback');
-          this.submitSignupForm(username, password, passwordConfirm);
+          this.submitSignupForm(username, password);
         }
       }
 
-      trySignupSDKMethods(username, password, passwordConfirm) {
+      validatePassword(password) {
+        const errors = [];
+
+        if (!password) {
+          errors.push('Password cannot be empty');
+          return errors;
+        }
+
+        if (password.length < 8) {
+          errors.push('Password must be at least 8 characters long');
+        }
+
+        if (!/[a-z]/.test(password)) {
+          errors.push('Password must contain at least one lowercase letter (a-z)');
+        }
+
+        if (!/[A-Z]/.test(password)) {
+          errors.push('Password must contain at least one uppercase letter (A-Z)');
+        }
+
+        if (!/[0-9]/.test(password)) {
+          errors.push('Password must contain at least one number (0-9)');
+        }
+
+        return errors;
+      }
+
+      trySignupSDKMethods(username, password) {
         const methods = ['signup', 'register', 'submitData', 'create', 'submit'];
 
         console.log('=== ATTEMPTING SIGNUP SDK METHODS ===');
@@ -495,9 +525,8 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
               // Try different parameter formats
               const attempts = [
-                { email: username, password: password, password_confirm: passwordConfirm },
-                { username: username, password: password },
                 { email: username, password: password },
+                { username: username, password: password },
                 { identifier: username, password: password }
               ];
 
@@ -523,7 +552,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log('=== ALL SDK METHODS FAILED ===');
         console.log('Falling back to form submission');
-        this.submitSignupForm(username, password, passwordConfirm);
+        this.submitSignupForm(username, password);
       }
 
       setupSignupSDKEventListeners() {
@@ -539,7 +568,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (event === 'error') {
                   this.setLoadingState(false);
-                  this.showError(data.message || 'Signup failed. Please try again.');
+                  const errorMessage = data?.message || data?.description || data?.error_description || 'Signup failed. Please try again.';
+                  this.showError(errorMessage);
                 }
               });
               console.log(`✅ Listener registered for: ${event}`);
@@ -550,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      submitSignupForm(username, password, passwordConfirm) {
+      submitSignupForm(username, password) {
         // Submit complete signup form to Auth0
         const form = document.createElement('form');
         form.method = 'POST';
@@ -570,11 +600,6 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordInput.type = 'hidden';
         passwordInput.name = 'password';
         passwordInput.value = password;
-
-        const passwordConfirmInput = document.createElement('input');
-        passwordConfirmInput.type = 'hidden';
-        passwordConfirmInput.name = 'password_confirm';
-        passwordConfirmInput.value = passwordConfirm;
 
         // Add state parameter
         const urlParams = new URLSearchParams(window.location.search);
@@ -597,7 +622,6 @@ document.addEventListener('DOMContentLoaded', function() {
         form.appendChild(usernameInput);
         form.appendChild(emailInput);
         form.appendChild(passwordInput);
-        form.appendChild(passwordConfirmInput);
 
         document.body.appendChild(form);
         form.submit();
@@ -658,9 +682,9 @@ document.addEventListener('DOMContentLoaded', function() {
         this.addInputFocusEffects(emailInput, '#38ef7d');
         emailGroup.appendChild(emailInput);
 
-        // Modern password input
+        // Modern password input with toggle visibility
         const passwordGroup = document.createElement('div');
-        passwordGroup.style.cssText = 'margin-bottom: 1.5rem; position: relative;';
+        passwordGroup.style.cssText = 'margin-bottom: 1rem; position: relative;';
 
         const passwordInput = document.createElement('input');
         passwordInput.id = 'password';
@@ -668,25 +692,97 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordInput.type = 'password';
         passwordInput.placeholder = 'Create a strong password';
         passwordInput.required = true;
-        passwordInput.style.cssText = emailInput.style.cssText;
+        passwordInput.autocomplete = 'new-password';
+        passwordInput.style.cssText = `
+          width: 100%;
+          padding: 1.25rem 3.5rem 1.25rem 1.5rem;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-radius: 16px;
+          background: rgba(255,255,255,0.1);
+          backdrop-filter: blur(10px);
+          color: #1a1a2e;
+          font-size: 1rem;
+          font-weight: 500;
+          box-sizing: border-box;
+          transition: all 0.3s ease;
+          outline: none;
+        `;
+
+        // Toggle password visibility button
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.innerHTML = `
+          <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg class="eye-off-icon" style="display: none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+        `;
+        toggleButton.style.cssText = `
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          background: transparent;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+          padding: 0.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: color 0.3s ease;
+        `;
+
+        toggleButton.addEventListener('click', () => {
+          const eyeIcon = toggleButton.querySelector('.eye-icon');
+          const eyeOffIcon = toggleButton.querySelector('.eye-off-icon');
+
+          if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            eyeIcon.style.display = 'none';
+            eyeOffIcon.style.display = 'block';
+          } else {
+            passwordInput.type = 'password';
+            eyeIcon.style.display = 'block';
+            eyeOffIcon.style.display = 'none';
+          }
+        });
+
+        toggleButton.addEventListener('mouseenter', () => {
+          toggleButton.style.color = '#1a1a2e';
+        });
+
+        toggleButton.addEventListener('mouseleave', () => {
+          toggleButton.style.color = '#64748b';
+        });
 
         this.addInputFocusEffects(passwordInput, '#11998e');
         passwordGroup.appendChild(passwordInput);
+        passwordGroup.appendChild(toggleButton);
 
-        // Modern confirm password input
-        const confirmGroup = document.createElement('div');
-        confirmGroup.style.cssText = 'margin-bottom: 2rem; position: relative;';
-
-        const confirmInput = document.createElement('input');
-        confirmInput.id = 'password_confirm';
-        confirmInput.name = 'password_confirm';
-        confirmInput.type = 'password';
-        confirmInput.placeholder = 'Confirm your password';
-        confirmInput.required = true;
-        confirmInput.style.cssText = emailInput.style.cssText;
-
-        this.addInputFocusEffects(confirmInput, '#2d1b69');
-        confirmGroup.appendChild(confirmInput);
+        // Password requirements hint
+        const requirementsHint = document.createElement('div');
+        requirementsHint.style.cssText = `
+          font-size: 0.85rem;
+          color: #64748b;
+          margin-bottom: 1.5rem;
+          padding: 0.75rem;
+          background: rgba(255,255,255,0.1);
+          border-radius: 8px;
+        `;
+        requirementsHint.innerHTML = `
+          <div style="font-weight: 600; margin-bottom: 0.5rem;">Password must contain:</div>
+          <ul style="margin: 0; padding-left: 1.5rem; line-height: 1.6;">
+            <li>At least 8 characters</li>
+            <li>Lowercase letter (a-z)</li>
+            <li>Uppercase letter (A-Z)</li>
+            <li>Number (0-9)</li>
+          </ul>
+        `;
 
         // Modern submit button with signup theme
         const submitButton = document.createElement('button');
@@ -753,7 +849,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         form.appendChild(emailGroup);
         form.appendChild(passwordGroup);
-        form.appendChild(confirmGroup);
+        form.appendChild(requirementsHint);
         form.appendChild(submitButton);
         form.appendChild(backContainer);
 
@@ -899,11 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Start initialization
-  console.log('🚀 About to call initializeSignup()...');
-  initializeSignup().catch(error => {
-    console.error('❌ initializeSignup() failed:', error);
-  });
-  console.log('✅ initializeSignup() called');
+  initializeSignup();
 });
 
 // Global error handler
